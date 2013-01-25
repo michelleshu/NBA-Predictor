@@ -1,9 +1,12 @@
 1/24/2013:
-Initial implementation of k-means is written. I tried to make it as general as possible, so that the program can take input data of any dimension and sort into any number of clusters. 
+Initial implementation of k-means is written. I tried to make it as general as possible, so that the program
+can take input data of any dimension and sort into any number of clusters. 
 
 Basic idea of how it works:
 assign all points to appropriate cluster according to closest centroid
-while cluster membership of some point changes: update location of centroid by setting it to the mean of the cluster
+while cluster membership of some point changes: update location of centroid by setting it to the mean of
+the cluster
 repeat until cluster membership does not change for any points.
 
-K-means algorithm is in KMeans.java and works on objects of type Point (Point.java). Have not tested yet. Next step will be to write the driver.
+K-means algorithm is in KMeans.java and works on objects of type Point (Point.java). Have not tested yet.
+Next step will be to write the driver.
