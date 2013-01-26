@@ -18,18 +18,23 @@ public class KMeans {
 	private ArrayList<ArrayList<Point>> clusters;	// groups of close points
 	private ArrayList<Point> centroids;		// means of clusters
 	
-	/* Constructor:
+	/** Constructor:
 	 * Create a KMeans problem from a set of input points and the number of 
 	 * clusters to be formed
 	 */
 	public KMeans(ArrayList<Point> inputPoints, int c) {
 		this.numClusters = c;
-		this.clusters = new ArrayList<ArrayList<Point>>();
-		this.centroids = new ArrayList<Point>();
+		this.clusters = new ArrayList<ArrayList<Point>>(c);
+		this.centroids = new ArrayList<Point>(c);
 		
 		// Initialize array lists for every cluster
 		for (int i = 0; i < c; i++) {
 			clusters.add(new ArrayList<Point>());
+		}
+		
+		// Initialize placeholders for each centroid
+		for (int i = 0; i < c; i++) {
+			centroids.add(new Point());
 		}
 		
 		// All points start in one cluster
@@ -78,6 +83,7 @@ public class KMeans {
 		while (i <= p1.getDimensions() - 1) {
 			dist = Math.sqrt(Math.pow(dist, 2) +
 					Math.pow((p1.getComponent(i) - p2.getComponent(i)), 2));
+			i++;
 		}
 		return dist;
 	}
@@ -149,7 +155,7 @@ public class KMeans {
 		ArrayList<ArrayList<Point>> newClusters = 
 				new ArrayList<ArrayList<Point>>();
 		for (int i = 0; i < this.numClusters; i++) {
-			clusters.add(new ArrayList<Point>());
+			newClusters.add(new ArrayList<Point>());
 		}
 		
 		// Reassign points from current clusters to appropriate new cluster
@@ -188,5 +194,4 @@ public class KMeans {
 			updateCentroids();
 		}
 	}
-	
 }

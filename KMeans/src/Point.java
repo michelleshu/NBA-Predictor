@@ -24,6 +24,12 @@ public class Point {
 		this.values = new double[n];
 	}
 	
+	// Default
+	public Point() {
+		this.dim = 0;
+		this.values = null;
+	}
+	
 	/* Getter and Setters */
 	
 	// Get all component values
@@ -45,6 +51,17 @@ public class Point {
 	// comp_number: which component it is, comp_value: value to set it to
 	public void setComponent(int comp_number, double comp_value) {
 		this.values[comp_number] = comp_value;
+	}
+	
+	/* Print Point values to console */
+	public String toString() {
+		String returnString = "(";
+		for (int i = 0; i < (this.dim - 1); i++) {
+			returnString = returnString + this.values[i] + ", ";
+		}
+		returnString = returnString + this.values[this.dim - 1] + ")";
+		
+		return returnString;
 	}
 	
 }
