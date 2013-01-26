@@ -25,3 +25,55 @@
  * 		Update the training distribution
  * 
  */
+
+import java.util.ArrayList;
+
+public class AdaBoostR {
+	
+	/* wl_candidates is a pool of weak learners that we can recruit from */
+	private ArrayList<WeakLearner> wl_candidates;
+	private int candidates_remaining; // Number of candidates remaining in pool
+	
+	/* wl_committee is the set of weak learners that have already been drafted 
+	 * as part of this AdaBoost predictive model */
+	private ArrayList<WeakLearner> wl_committee;
+	
+	/* The training_set contains all training examples, who each hold their
+	 * current weight */
+	private ArrayList<TrainingExample> training_set;
+	private int N;	// Number of training examples
+	
+	/** Constructor - need to fill this in */
+	public AdaBoostR() {
+		// FILL THIS IN
+		
+		this.candidates_remaining = this.wl_candidates.size();
+		this.N = this.training_set.size();
+	}
+	
+	/** Initialize training set distribution - need to fill this in */
+	public void init() {
+		// FILL THIS IN
+		
+		// Initialize all weights and relative weights of examples to 1/N.
+		for (int i = 0; i < N; i++) {
+			training_set.get(i).setWeight(1/N);
+			training_set.get(i).setRelativeWeight(1/N);
+		}
+	}
+	
+	/** Recruit learner from candidates and return it */
+	private WeakLearner recruitLearner() {
+		// Pluck off the last learner in the candidate list and add him to the
+		// committee list.
+		WeakLearner wl = wl_candidates.get(candidates_remaining - 1);
+		wl_committee.add(wl);
+		
+		// Remove from candidates list and decrement candidates_remaining
+		wl_candidates.remove(--candidates_remaining);
+		
+		return wl;
+	}
+	
+	
+}
