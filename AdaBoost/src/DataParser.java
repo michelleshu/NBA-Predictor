@@ -2,6 +2,8 @@
  * DataParser.java
  * Reads in data from semicolon-delimited text file and initializes instances
  * of TrainingExample class based on data.
+ * To use: Pass processFile the FULL path (from root directory) of the txt file
+ * to read
  * 
  * @author Michelle Shu, with major parts copied from Gediminas Bertasius
  * January 30, 2013
@@ -14,7 +16,8 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 
 public class DataParser {
-	public static ArrayList<TrainingExample> examplesIn;
+	public static ArrayList<TrainingExample> examplesIn = 
+			new ArrayList<TrainingExample>();
 	
 	/** Get all examples that have already been read. */
 	public static ArrayList<TrainingExample> getData() {
@@ -55,7 +58,6 @@ public class DataParser {
 			// Pass line by line to parseLine
 			String line;
 			while ((line = reader.readLine()) != null) {
-				System.out.println(line);
 				parseLine(line);
 			}
 			
@@ -65,12 +67,11 @@ public class DataParser {
 			fstream.close();
 			
 		} catch (Exception exc) {
-			System.err.println("Error: Unreadable file.");
+			System.err.println("Error reading file.");
 		}
 	}
 	
 	public static void main(String [] args) {
 		processFile("/Users/michelleshu/Documents/2013/CS74/Workspace/AdaBoost/src/data1.txt");
-		
 	}
 }
