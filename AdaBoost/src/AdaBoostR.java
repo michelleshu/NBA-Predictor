@@ -8,21 +8,20 @@
  * January 25, 2012
  */
 
-/* Plan:
+/* The Overall Strategy:
  * 
- * 1. Input
- * 	Use training set examples (x1, y1)... (xn, yn)
- * 	Train many weak learners who produce hypothesis f(x) that approximates y
- * 		and whose performance can be evaluated by cost function J
+ * 1. Setup
+ * 		Use training set examples (x1, y1)... (xn, yn)
+ * 		Train many weak learners who produce hypothesis f(x) that approximates y
+ * 			and whose performance can be evaluated by cost function J
+ * 		Set initial weights of all training inputs: p(xi) = 1/n
  * 
- * 2. Set initial weights of all training inputs: p(xi) = 1/n
- * 
- * 3. Iterate:
- * 		Call WeakLearner - minimize cost by reweighting distribution p
- * 		(Test by acceptance criteria whether WeakLearner is good enough)
- * 		Use gradient descent to set 0 <= c <= 1, the combination coefficients
- * 			of recruited learners
- * 		Update the training distribution
+ * 2. Iterate (t is round of iteration):
+ * 		Recruit a new weak learner, wlt.
+ * 		Given the current distribution of training examples, use line search
+ * 			to set 0 <= ct <= 1, the combination coefficient of the new learner 
+ * 			to minimize the cost function Jt.
+ * 		Update the training distribution based on new ct and error.
  * 
  */
 
@@ -75,5 +74,63 @@ public class AdaBoostR {
 		return wl;
 	}
 	
+	/** 
+	 * The learning objective/ cost function is multiplicative in the
+	 * wl_committee hypotheses' costs.
+	 * The target outputs are not altered after each stage. Rather the objective
+	 * for each hypothesis is formed by re-weighting the training distribution.
+	 * 
+	 * Here, the cost J in a given stage is proportional to the exponentiated 
+	 * squared error of the new learner on a training distribution weighted
+	 * according to the performance of all previously recruited learners.
+	 * 
+	 * evaluateCost returns the value of the equation:
+	 * Jt = SUM(i = 1 to n) { wt(i) * ct^(-1/2) * exp[ct * (ft(x(i)) - y(i))^2]
+	 * where t is the new weak learner and i is a training example.
+	 * 
+	 * @return cost Jt with addition of wlt
+	 */
+	private double evaluateCost(WeakLearner wlt, double ct) {
+		double cost = 0;
+		
+		// Update by summing to cost one example at a time
+		for (int i = 0; i < N; i++) {
+			TrainingExample example = training_set.get(i);
+			double squaredError = 
+					Math.pow(wlt.getHypothesis(example.getInputVector()) - 
+						example.getTarget(), 2);
+			double exp_term = Math.exp(ct * squaredError);
+			double wt = example.getWeight();
+			cost += wt * Math.pow(ct, -0.5) * exp_term;
+		}	
+		return cost;
+	}
 	
+	/**
+	 * Minimize the cost Jt (as computed in evaluateCost) with respect to the 
+	 * combination coefficient, ct, of the newly recruited weak learner.
+	 * 
+	 * Minimizing Jt is the same as minimizing ln(Jt).
+	 * Taking the derivative of ln(Jt) and setting it equal to zero gives us
+	 * that the optimal ct is: n / { 2 * SUM (ft(x(i)) - y(i))^2 }
+	 * 
+	 * @return optimal ct for wlt
+	 */
+	private double minimizeCost(WeakLearner wlt) {
+		// Get sum of squared error from examples.
+		double sumSquaredError = 0;
+		for (int i = 0; i < N; i++) {
+			TrainingExample example = training_set.get(i);
+			sumSquaredError += 
+					Math.pow(wlt.getHypothesis(example.getInputVector()) - 
+							example.getTarget(), 2);
+		}
+		
+		double ct = N / (2 * sumSquaredError);
+		
+		// ct must be less than or equal to 1. Correct if it is too high.
+		if (ct > 1.0) {
+			return 1.0;
+		} else { return ct; }
+	}
 }
