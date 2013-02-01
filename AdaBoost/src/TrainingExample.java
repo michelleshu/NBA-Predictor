@@ -66,7 +66,7 @@ public class TrainingExample {
 		return this.relative_weight;
 	}
 	
-	/* Setter */
+	/* Setters */
 	/** Set weight of this training example */
 	public void setWeight(double w) {
 		this.weight = w;

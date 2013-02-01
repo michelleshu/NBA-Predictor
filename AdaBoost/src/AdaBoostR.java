@@ -5,24 +5,7 @@
  * regression problems. Advances in neural information processing systems, 696-702.
  * 
  * @author Michelle Shu
- * January 25, 2012
- */
-
-/* The Overall Strategy:
- * 
- * 1. Setup
- * 		Use training set examples (x1, y1)... (xn, yn)
- * 		Train many weak learners who produce hypothesis f(x) that approximates y
- * 			and whose performance can be evaluated by cost function J
- * 		Set initial weights of all training inputs: p(xi) = 1/n
- * 
- * 2. Iterate (t is round of iteration):
- * 		Recruit a new weak learner, wlt.
- * 		Given the current distribution of training examples, use line search
- * 			to set 0 <= ct <= 1, the combination coefficient of the new learner 
- * 			to minimize the cost function Jt.
- * 		Update the training distribution based on new ct and error.
- * 
+ * Last Updated February 1, 2013
  */
 
 import java.util.ArrayList;
@@ -37,23 +20,57 @@ public class AdaBoostR {
 	 * as part of this AdaBoost predictive model */
 	private ArrayList<WeakLearner> wl_committee;
 	
+	/* Demarcation threshold tau. Roughly reflects the maximum averaged squared
+	 * error we are willing to accept to recruit that learner */
+	private final int TAU = 100;
+	
 	/* The training_set contains all training examples, who each hold their
 	 * current weight */
 	private ArrayList<TrainingExample> training_set;
 	private int N;	// Number of training examples
 	
 	/** Constructor - need to fill this in */
-	public AdaBoostR() {
-		// FILL THIS IN
+	public AdaBoostR(ArrayList<WeakLearner> wl_set, 
+			ArrayList<TrainingExample> train_set) {
+		// Two things needed: list of weak learner candidates and list of
+		// training examples.
+		this.wl_candidates = wl_set;
+		this.training_set = train_set;
+		
+		// We make a new empty array for weak learner committee.
+		this.wl_committee = new ArrayList<WeakLearner>();
 		
 		this.candidates_remaining = this.wl_candidates.size();
 		this.N = this.training_set.size();
 	}
 	
-	/** Initialize training set distribution - need to fill this in */
-	public void init() {
-		// FILL THIS IN
+	/* The Overall Training Strategy (main function is trainAdaBoostR):
+	 * 
+	 * 1. Setup
+	 * 		Use training set examples (x1, y1)... (xn, yn)
+	 * 		Train many weak learners who produce hypothesis f(x) that 
+	 * 			approximates y and whose performance can be evaluated by cost 
+	 * 			function J
+	 * 		Set initial weights of all training inputs: p(xi) = 1/n
+	 * 
+	 * 2. Iterate (t is round of iteration):
+	 * 		Find a new weak learner, wlt.
+	 * 		Recruit wlt iff its performance on current training distribution 
+	 * 			passes the demarcation threshold. Otherwise, pick another wlt.
+	 * 		Given the current distribution of training examples, use line search
+	 * 			to set 0 <= ct <= 1, the combination coefficient of the new 
+	 * 			learner to minimize the cost function Jt.
+	 * 		Update the training distribution based on new ct and error.
+	 */
+	
+	public void trainAdaBoostR() {
+		initializeTrainingDistribution();
 		
+		// FINISH THIS
+	}
+	
+	/** Initialize training set distribution */
+	private void initializeTrainingDistribution() {
 		// Initialize all weights and relative weights of examples to 1/N.
 		for (int i = 0; i < N; i++) {
 			training_set.get(i).setWeight(1/N);
@@ -61,7 +78,27 @@ public class AdaBoostR {
 		}
 	}
 	
+	/**
+	 * The demarcation threshold is a marker by which to judge whether the
+	 * performance of a new weak learner on the current training distribution
+	 * warrants its inclusion.
+	 * 
+	 * A weak learner passes if its epsilon value is less than 1.
+	 * epsilon = SUM (over i examples) { p(i) * exp[(f(x(i)) - y(i))^2 - TAU] },
+	 * where p represents the relative weight of training example i.
+	 */
+	private boolean passDemarcationTest(WeakLearner wl) {
+		double epsilon = 0;
+		for (int i = 0; i < N; i++) {
+			TrainingExample example = training_set.get(i);
+			double exp_term = Math.exp(squaredError(wl, example) - TAU);
+			epsilon += example.getRelativeWeight() * exp_term;
+		}
+		return (epsilon < 1);
+	}
+	
 	/** Recruit learner from candidates and return it */
+	// UPDATE THIS AFTER WRITING DEMARCATION FUNCTION
 	private WeakLearner recruitLearner() {
 		// Pluck off the last learner in the candidate list and add him to the
 		// committee list.
@@ -69,9 +106,19 @@ public class AdaBoostR {
 		wl_committee.add(wl);
 		
 		// Remove from candidates list and decrement candidates_remaining
-		wl_candidates.remove(--candidates_remaining);
+		wl_candidates.remove(candidates_remaining);
+		candidates_remaining--;
 		
 		return wl;
+	}
+	
+	/**
+	 * Return the squared error of a weak learner on a training example.
+	 * @return squared error value
+	 */
+	private double squaredError(WeakLearner wl, TrainingExample example) {
+		return Math.pow(wl.getHypothesis(example.getInputVector()) - 
+				example.getTarget(), 2);
 	}
 	
 	/** 
@@ -96,10 +143,7 @@ public class AdaBoostR {
 		// Update by summing to cost one example at a time
 		for (int i = 0; i < N; i++) {
 			TrainingExample example = training_set.get(i);
-			double squaredError = 
-					Math.pow(wlt.getHypothesis(example.getInputVector()) - 
-						example.getTarget(), 2);
-			double exp_term = Math.exp(ct * squaredError);
+			double exp_term = Math.exp(ct * squaredError(wlt, example));
 			double wt = example.getWeight();
 			cost += wt * Math.pow(ct, -0.5) * exp_term;
 		}	
@@ -121,9 +165,7 @@ public class AdaBoostR {
 		double sumSquaredError = 0;
 		for (int i = 0; i < N; i++) {
 			TrainingExample example = training_set.get(i);
-			sumSquaredError += 
-					Math.pow(wlt.getHypothesis(example.getInputVector()) - 
-							example.getTarget(), 2);
+			sumSquaredError += squaredError(wlt, example);
 		}
 		
 		double ct = N / (2 * sumSquaredError);
@@ -133,4 +175,46 @@ public class AdaBoostR {
 			return 1.0;
 		} else { return ct; }
 	}
+	
+	/** Update the weight of a single training example with respect to the
+	 * performance of the newly added learner. Then return the updated weight.
+	 * Do not call this function directly. It is called from the function
+	 * updateTrainingDistribution.
+	 * 
+	 * The new weight after iteration t is:
+	 * w(t + 1) = wt * ct^(-1/2) * exp[ct * (ft(x(i) - y(i))^2]
+	 * @return updated weight of example after new learner
+	 */
+	private double updateSingleExampleWeight(WeakLearner wlt, 
+			TrainingExample example) {
+		double wt = example.getWeight();	// weight of example before update
+		double ct = wlt.combCoefficient;
+		double exp_term = Math.exp(ct * squaredError(wlt, example));
+		double newWeight = wt * (Math.pow(ct, -0.5)) * exp_term;
+		
+		example.setWeight(newWeight);
+		return newWeight;
+	}
+	
+	/** Update the weights of each training example in the training
+	 * distribution with respect to performance of newly added learner.
+	 * Then update their relative weights.
+	 */
+	private void updateTrainingDistribution(WeakLearner wlt) {
+		double sumOfWeights = 0;
+		
+		// Update weights of each individual example, while tallying new weights
+		// in sumOfWeights
+		for (int i = 0; i < N; i++) {
+			TrainingExample example = training_set.get(i);
+			sumOfWeights += updateSingleExampleWeight(wlt, example);
+		}
+		
+		// Now set relative weights of all examples using sumOfWeights.
+		for (int i = 0; i < N; i++) {
+			TrainingExample example = training_set.get(i);
+			example.setRelativeWeight(example.getWeight() / sumOfWeights);
+		}
+	}
+	
 }
