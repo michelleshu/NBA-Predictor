@@ -14,7 +14,6 @@ public class AdaBoostR {
 	
 	/* wl_candidates is a pool of weak learners that we can recruit from */
 	private ArrayList<WeakLearner> wl_candidates;
-	private int candidates_remaining; // Number of candidates remaining in pool
 	
 	/* wl_committee is the set of weak learners that have already been drafted 
 	 * as part of this AdaBoost predictive model */
@@ -40,11 +39,10 @@ public class AdaBoostR {
 		// We make a new empty array for weak learner committee.
 		this.wl_committee = new ArrayList<WeakLearner>();
 		
-		this.candidates_remaining = this.wl_candidates.size();
 		this.N = this.training_set.size();
 	}
 	
-	/* The Overall Training Strategy (main function is trainAdaBoostR):
+	/** Training Phase:
 	 * 
 	 * 1. Setup
 	 * 		Use training set examples (x1, y1)... (xn, yn)
@@ -64,10 +62,55 @@ public class AdaBoostR {
 	 */
 	
 	public void trainAdaBoostR() {
+		// Set even training distribution to start.
 		initializeTrainingDistribution();
 		
-		// FINISH THIS
+		// Choose the first weak learner, if possible.
+		WeakLearner wlt = recruitLearner();
+		if (wlt == null) {
+			System.err.println("Error: No suitable learners available." + 
+					"Please adjust tau or add new learners.");
+		} else {
+			// As long as we have a suitable weak learner to add, continue
+			// training the model by adding the learner.
+			while (wlt != null) {
+				// Set the combination coefficient of the learner.
+				minimizeCost(wlt);
+				// Update training distribution.
+				updateTrainingDistribution(wlt);
+				// Recruit a new learner.
+				wlt = recruitLearner();
+			}
+			System.out.println("Training phase complete.");
+		}
 	}
+	
+	/** Prediction Phase:
+	 * ONLY CALL THIS FUNCTION AFTER TRAINING IS COMPLETE.
+	 * 
+	 * After the AdaBoostR model is trained, it should be able to utilize the
+	 * collective knowledge of the weak learner committee to make predictions
+	 * about the target values of new input vectors.
+	 * 
+	 * The predicted output is given by the weighted sum of individual 
+	 * learners' predictions. The weight of each learner is proportional to its
+	 * combination coefficient.
+	 * 
+	 * predicted y = SUM { ct * ft(x) } / SUM { ct }
+	 */
+	public double getPrediction(double [] input) {
+		int T = wl_committee.size(); // number of weak learners in committee
+		double weighted_prediction = 0;
+		double sumOfWeights = 0;
+		for (int i = 0; i < T; i++) {
+			WeakLearner wlt = wl_committee.get(i);
+			weighted_prediction += (wlt.combCoefficient * 
+									wlt.getHypothesis(input));
+			sumOfWeights += wlt.combCoefficient;
+		}
+		return weighted_prediction / sumOfWeights;
+	}
+	
 	
 	/** Initialize training set distribution */
 	private void initializeTrainingDistribution() {
@@ -97,19 +140,26 @@ public class AdaBoostR {
 		return (epsilon < 1);
 	}
 	
-	/** Recruit learner from candidates and return it */
-	// UPDATE THIS AFTER WRITING DEMARCATION FUNCTION
+	/** Recruit learner from candidates and return it. If there are no
+	 * satisfactory candidates left in the pool, return null. */
 	private WeakLearner recruitLearner() {
-		// Pluck off the last learner in the candidate list and add him to the
-		// committee list.
-		WeakLearner wl = wl_candidates.get(candidates_remaining - 1);
-		wl_committee.add(wl);
+		boolean wlFound = false;
+		int index = 0;
+		while ((! wlFound) && (index < wl_candidates.size())) {
+			WeakLearner wl = wl_candidates.get(index);
+			// Accept the weak learner if it passes the demarcation test
+			if (passDemarcationTest(wl)) {
+				wlFound = true;
+				wl_candidates.remove(index);
+				wl_committee.add(wl);
+				return wl;
+			} else {
+				index++;
+			}
+		}
 		
-		// Remove from candidates list and decrement candidates_remaining
-		wl_candidates.remove(candidates_remaining);
-		candidates_remaining--;
-		
-		return wl;
+		// If no weak learner in candidate pool is satisfactory, return null.
+		return null;
 	}
 	
 	/**
@@ -215,6 +265,5 @@ public class AdaBoostR {
 			TrainingExample example = training_set.get(i);
 			example.setRelativeWeight(example.getWeight() / sumOfWeights);
 		}
-	}
-	
+	}	
 }
