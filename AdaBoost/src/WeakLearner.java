@@ -13,10 +13,10 @@ import java.util.ArrayList;
 import java.util.Random;
 
 public class WeakLearner {
-	private final int SUBSET_SIZE = 3;  // Size of random subset of features
-	private final double LAMBDA = 0.01;	// Regularization term for LSR
+	private final int SUBSET_SIZE = 10;  // Size of random subset of features
+	private final double LAMBDA = 0.1;	// Regularization term for LSR
 	private final double ALPHA = 0.01;	// Step size for LSR gradient descent
-	private final double TAU = 0.01;	// Stopping criterion for gradient
+	private final double TAU = 0.1;		// Stopping criterion for gradient
 										// descent convergence
 	
 	private ArrayList<TrainingExample> training_set;
@@ -45,9 +45,9 @@ public class WeakLearner {
 		this.training_set = training_set;
 		this.n = this.training_set.size();
 		this.dim = this.training_set.get(0).getInputDim();
-		this.quad_dim = ((this.dim) * (this.dim + 1) / 2) + 1; // quadratic 
+		this.quad_dim = this.dim + ((this.dim) * (this.dim + 1) / 2) + 1; // quadratic 
 		this.theta = new double[this.quad_dim]; // quadratic theta
-		for (int i = 0; i < this.theta.length; i++) {
+		for (int i = 0; i < this.quad_dim; i++) {
 			this.theta[i] = 0; // Initialize theta entries to 0.
 		}
 		this.training_quad_basis = new ArrayList<ArrayList<Double>>(this.n);
@@ -138,10 +138,17 @@ public class WeakLearner {
 	 * the input vector which were selected. Includes bias term.
 	 */
 	private ArrayList<Double> getSubsetQuadBasis(double[] input) {
-		ArrayList<Double> qb = new ArrayList<Double>(
-				(input.length * (input.length + 1) / 2) + 1);
+		ArrayList<Double> qb = new ArrayList<Double>(quad_dim);
 		qb.add(0, 1.0);	// bias term
 		int qb_index = 1;
+		
+		// First add all linear terms.
+		for (int i = 0; i < input.length; i++) {
+			qb.add(qb_index, input[i]);
+			qb_index++;
+		}
+		
+		// Then add all quadratic terms.
 		for (int i = 0; i < input.length; i++) {
 			for (int j = i; j < input.length; j++) {
 				// offset index by 1 because Java counts starting from 0, while
@@ -179,10 +186,19 @@ public class WeakLearner {
 		return prediction;
 	}
 	
+	public void printTheta() {
+		System.out.print("Theta = ");
+		for (int i = 0; i < quad_dim; i++) {
+			System.out.print(theta[i] + " ");
+		}
+		System.out.print("\n");
+	}
+	
 	private void batchGradientDescent() {
 		// Converges on minimum when gradient step of error is less than TAU 
 		// Iterate until convergence for every feature of every example 
 		double step_magnitude = Double.MAX_VALUE;
+		
 		while (step_magnitude > TAU) {
 			step_magnitude = 0; // holds magnitude of gradient
 			// theta_change will hold the values by which each dimension of
@@ -206,12 +222,6 @@ public class WeakLearner {
 					 * stage in AdaBoost and the LAMBDA term is a regularizer to
 					 * prevent overfitting with large theta values.
 					 */
-					
-//					System.out.println("Example # " + i + ", Dimension " + j);
-//					System.out.println("Error: " + 
-//							(getHypothesisQuad(quad_input) - target));
-//					System.out.println("xj: " + training_quad_basis.get(i).get(j));
-					
 					theta_change[j] = ALPHA * (getHypothesisQuad(quad_input) - 
 							target) * training_quad_basis.get(i).get(j) * 
 							training_set.get(i).getRelativeWeight();
@@ -227,11 +237,26 @@ public class WeakLearner {
 					theta[k] -= theta_change[k];
 				}
 				
+				printTheta();
+				
 				// Add change along this dimension to total magnitude of 
 				// gradient step
 				step_magnitude = Math.sqrt(Math.pow(step_magnitude, 2) + 
 						Math.pow(theta_change[j], 2));
 			}
 		}
+	}
+	
+	public static void main(String args[]) {
+		DataParser.processFile("/Users/michelleshu/Documents/2013/CS74/Workspace/AdaBoost/src/data1.txt");
+		ArrayList<TrainingExample> training_set = DataParser.getData();
+		
+		for (int i = 1; i < training_set.size(); i++) {
+			training_set.get(i).setRelativeWeight(0.001);
+		}
+		
+		WeakLearner wl = new WeakLearner(DataParser.getData());
+		wl.train();
+		System.out.println(wl.getHypothesis(wl.training_set.get(1).getInputVector()));
 	}
 }
