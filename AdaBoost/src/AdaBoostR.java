@@ -11,6 +11,9 @@
 import java.util.ArrayList;
 
 public class AdaBoostR {
+	/* Demarcation threshold tau. Roughly reflects the maximum averaged squared
+	 * error we are willing to accept to recruit that learner */
+	private final int TAU = 100;
 	
 	/* wl_candidates is a pool of weak learners that we can recruit from */
 	private ArrayList<WeakLearner> wl_candidates;
@@ -18,10 +21,6 @@ public class AdaBoostR {
 	/* wl_committee is the set of weak learners that have already been drafted 
 	 * as part of this AdaBoost predictive model */
 	private ArrayList<WeakLearner> wl_committee;
-	
-	/* Demarcation threshold tau. Roughly reflects the maximum averaged squared
-	 * error we are willing to accept to recruit that learner */
-	private final int TAU = 100;
 	
 	/* The training_set contains all training examples, who each hold their
 	 * current weight */
@@ -31,9 +30,7 @@ public class AdaBoostR {
 	/** Constructor - need to fill this in */
 	public AdaBoostR(ArrayList<WeakLearner> wl_set, 
 			ArrayList<TrainingExample> train_set) {
-		// Two things needed: list of weak learner candidates and list of
-		// training examples.
-		this.wl_candidates = wl_set;
+		// List of training examples
 		this.training_set = train_set;
 		
 		// We make a new empty array for weak learner committee.
@@ -42,7 +39,7 @@ public class AdaBoostR {
 		this.N = this.training_set.size();
 	}
 	
-	/** Training Phase:
+	/* Training Phase:
 	 * 
 	 * 1. Setup
 	 * 		Use training set examples (x1, y1)... (xn, yn)
@@ -85,7 +82,7 @@ public class AdaBoostR {
 		}
 	}
 	
-	/** Prediction Phase:
+	/* Prediction Phase:
 	 * ONLY CALL THIS FUNCTION AFTER TRAINING IS COMPLETE.
 	 * 
 	 * After the AdaBoostR model is trained, it should be able to utilize the
@@ -98,15 +95,16 @@ public class AdaBoostR {
 	 * 
 	 * predicted y = SUM { ct * ft(x) } / SUM { ct }
 	 */
+	
 	public double getPrediction(double [] input) {
 		int T = wl_committee.size(); // number of weak learners in committee
 		double weighted_prediction = 0;
 		double sumOfWeights = 0;
 		for (int i = 0; i < T; i++) {
 			WeakLearner wlt = wl_committee.get(i);
-			weighted_prediction += (wlt.combCoefficient * 
+			weighted_prediction += (wlt.getCombCoef() * 
 									wlt.getHypothesis(input));
-			sumOfWeights += wlt.combCoefficient;
+			sumOfWeights += wlt.getCombCoef();
 		}
 		return weighted_prediction / sumOfWeights;
 	}
@@ -238,7 +236,7 @@ public class AdaBoostR {
 	private double updateSingleExampleWeight(WeakLearner wlt, 
 			TrainingExample example) {
 		double wt = example.getWeight();	// weight of example before update
-		double ct = wlt.combCoefficient;
+		double ct = wlt.getCombCoef();
 		double exp_term = Math.exp(ct * squaredError(wlt, example));
 		double newWeight = wt * (Math.pow(ct, -0.5)) * exp_term;
 		
