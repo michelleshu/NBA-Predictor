@@ -19,7 +19,7 @@ public class AdaBoostR {
 	
 	/* wl_committee is the set of weak learners that have already been drafted 
 	 * as part of this AdaBoost predictive model */
-	private ArrayList<WeakLearner> wl_committee;
+	private ArrayList<WeakLearner> wl_committee = new ArrayList<WeakLearner>();
 	private int T = 0;	// number of weak learners in committee
 	
 	/* The training_set contains all training examples, who each hold their
