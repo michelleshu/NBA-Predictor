@@ -72,6 +72,16 @@ public class TrainingExample {
 		this.weight = w;
 	}
 	
+	public void setTarget(double target) {
+		this.target = target;
+	}
+	
+	public void setInput(int index, double value) {
+		if (index < input.length) {
+			input[index] = value;
+		}
+	}
+	
 	/** Set the relative weight of this training example */
 	public void setRelativeWeight(double rw) {
 		this.relative_weight = rw;

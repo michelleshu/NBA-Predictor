@@ -15,28 +15,33 @@ public class AdaBoostR {
 	 * error we are willing to accept to recruit that learner */
 	private final int TAU = 100;
 	
-	/* wl_candidates is a pool of weak learners that we can recruit from */
-	private ArrayList<WeakLearner> wl_candidates;
+	private final int MAX_WL = 10; // Number of weak learners to recruit
 	
 	/* wl_committee is the set of weak learners that have already been drafted 
 	 * as part of this AdaBoost predictive model */
 	private ArrayList<WeakLearner> wl_committee;
+	private int T = 0;	// number of weak learners in committee
 	
 	/* The training_set contains all training examples, who each hold their
 	 * current weight */
 	private ArrayList<TrainingExample> training_set;
 	private int N;	// Number of training examples
 	
-	/** Constructor - need to fill this in */
-	public AdaBoostR(ArrayList<WeakLearner> wl_set, 
-			ArrayList<TrainingExample> train_set) {
+	/** Constructor */
+	public AdaBoostR(ArrayList<TrainingExample> train_set) {
 		// List of training examples
 		this.training_set = train_set;
 		
+		// Normalize feature values of samples.
+		TrainingSetTransformer transformer = new TrainingSetTransformer(training_set);
+		transformer.transform(training_set);
+		
 		// We make a new empty array for weak learner committee.
-		this.wl_committee = new ArrayList<WeakLearner>();
+		//this.wl_committee = new ArrayList<WeakLearner>();
 		
 		this.N = this.training_set.size();
+		System.out.println("Adaboost init");
+		System.out.println(N);
 	}
 	
 	/* Training Phase:
@@ -49,9 +54,9 @@ public class AdaBoostR {
 	 * 		Set initial weights of all training inputs: p(xi) = 1/n
 	 * 
 	 * 2. Iterate (t is round of iteration):
-	 * 		Find a new weak learner, wlt.
+	 * 		Train a new weak learner, wlt.
 	 * 		Recruit wlt iff its performance on current training distribution 
-	 * 			passes the demarcation threshold. Otherwise, pick another wlt.
+	 * 			passes the demarcation threshold. Otherwise, train another wlt.
 	 * 		Given the current distribution of training examples, use line search
 	 * 			to set 0 <= ct <= 1, the combination coefficient of the new 
 	 * 			learner to minimize the cost function Jt.
@@ -59,27 +64,24 @@ public class AdaBoostR {
 	 */
 	
 	public void trainAdaBoostR() {
-		// Set even training distribution to start.
+		// Set a uniform training example distribution to start.
 		initializeTrainingDistribution();
+		System.out.println("Training distribution set");
 		
-		// Choose the first weak learner, if possible.
-		WeakLearner wlt = recruitLearner();
-		if (wlt == null) {
-			System.err.println("Error: No suitable learners available." + 
-					"Please adjust tau or add new learners.");
-		} else {
-			// As long as we have a suitable weak learner to add, continue
-			// training the model by adding the learner.
-			while (wlt != null) {
-				// Set the combination coefficient of the learner.
-				minimizeCost(wlt);
-				// Update training distribution.
-				updateTrainingDistribution(wlt);
-				// Recruit a new learner.
-				wlt = recruitLearner();
-			}
-			System.out.println("Training phase complete.");
+		// Train MAX_WL weak learners.
+		while (T <= MAX_WL) {
+			WeakLearner wlt = new WeakLearner(training_set);
+			wl_committee.add(wlt);
+			wlt.train();
+			System.out.println("Weak learner " + T + " trained");
+			T++;
+			// Set the combination coefficient of the learner.
+			double cost = minimizeCost(wlt);
+			System.out.println("Cost: " + cost);
+			// Update training distribution.
+			updateTrainingDistribution(wlt);
 		}
+		System.out.println("Training phase complete.");
 	}
 	
 	/* Prediction Phase:
@@ -114,8 +116,8 @@ public class AdaBoostR {
 	private void initializeTrainingDistribution() {
 		// Initialize all weights and relative weights of examples to 1/N.
 		for (int i = 0; i < N; i++) {
-			training_set.get(i).setWeight(1/N);
-			training_set.get(i).setRelativeWeight(1/N);
+			training_set.get(i).setWeight(1.0/N);
+			training_set.get(i).setRelativeWeight(1.0/N);
 		}
 	}
 	
@@ -136,28 +138,6 @@ public class AdaBoostR {
 			epsilon += example.getRelativeWeight() * exp_term;
 		}
 		return (epsilon < 1);
-	}
-	
-	/** Recruit learner from candidates and return it. If there are no
-	 * satisfactory candidates left in the pool, return null. */
-	private WeakLearner recruitLearner() {
-		boolean wlFound = false;
-		int index = 0;
-		while ((! wlFound) && (index < wl_candidates.size())) {
-			WeakLearner wl = wl_candidates.get(index);
-			// Accept the weak learner if it passes the demarcation test
-			if (passDemarcationTest(wl)) {
-				wlFound = true;
-				wl_candidates.remove(index);
-				wl_committee.add(wl);
-				return wl;
-			} else {
-				index++;
-			}
-		}
-		
-		// If no weak learner in candidate pool is satisfactory, return null.
-		return null;
 	}
 	
 	/**
@@ -263,5 +243,12 @@ public class AdaBoostR {
 			TrainingExample example = training_set.get(i);
 			example.setRelativeWeight(example.getWeight() / sumOfWeights);
 		}
-	}	
+	}
+	
+	public static void main(String[] args) {
+		DataParser.processFile("/Users/michelleshu/Documents/2013/CS74/Workspace/AdaBoost/src/data1.txt");
+		ArrayList<TrainingExample> training_set = DataParser.getData();
+		AdaBoostR ada = new AdaBoostR(training_set);
+		ada.trainAdaBoostR();
+	}
 }
