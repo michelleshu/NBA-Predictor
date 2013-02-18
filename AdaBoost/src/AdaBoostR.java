@@ -15,7 +15,7 @@ public class AdaBoostR {
 	 * error we are willing to accept to recruit that learner */
 	private final int TAU = 100;
 	
-	private final int MAX_WL = 10; // Number of weak learners to recruit
+	private final int MAX_WL = 100; // Number of weak learners to recruit
 	
 	/* wl_committee is the set of weak learners that have already been drafted 
 	 * as part of this AdaBoost predictive model */
@@ -33,15 +33,15 @@ public class AdaBoostR {
 		this.training_set = train_set;
 		
 		// Normalize feature values of samples.
-		TrainingSetTransformer transformer = new TrainingSetTransformer(training_set);
-		transformer.transform(training_set);
+		//TrainingSetTransformer transformer = new TrainingSetTransformer(training_set);
+		//transformer.transform(training_set);
 		
 		// We make a new empty array for weak learner committee.
 		//this.wl_committee = new ArrayList<WeakLearner>();
 		
 		this.N = this.training_set.size();
 		System.out.println("Adaboost init");
-		System.out.println(N);
+		System.out.println("N = " + N);
 	}
 	
 	/* Training Phase:
@@ -76,8 +76,7 @@ public class AdaBoostR {
 			System.out.println("Weak learner " + T + " trained");
 			T++;
 			// Set the combination coefficient of the learner.
-			double cost = minimizeCost(wlt);
-			System.out.println("Cost: " + cost);
+			minimizeCost(wlt);
 			// Update training distribution.
 			updateTrainingDistribution(wlt);
 		}
@@ -198,10 +197,8 @@ public class AdaBoostR {
 		
 		double ct = N / (2 * sumSquaredError);
 		
-		// ct must be less than or equal to 1. Correct if it is too high.
-		if (ct > 1.0) {
-			return 1.0;
-		} else { return ct; }
+		wlt.setCombCoef(ct);
+		return ct; 
 	}
 	
 	/** Update the weight of a single training example with respect to the
@@ -250,5 +247,15 @@ public class AdaBoostR {
 		ArrayList<TrainingExample> training_set = DataParser.getData();
 		AdaBoostR ada = new AdaBoostR(training_set);
 		ada.trainAdaBoostR();
+		System.out.println("Prediction for sample 1: " + ada.getPrediction(training_set.get(0).getInputVector()));
+		System.out.println("True target for sample 1: " + training_set.get(0).getTarget());
+		System.out.println("Prediction for sample 2: " + ada.getPrediction(training_set.get(1).getInputVector()));
+		System.out.println("True target for sample 2: " + training_set.get(1).getTarget());
+		System.out.println("Prediction for sample 3: " + ada.getPrediction(training_set.get(2).getInputVector()));
+		System.out.println("True target for sample 3: " + training_set.get(2).getTarget());
+		System.out.println("Prediction for sample 4: " + ada.getPrediction(training_set.get(3).getInputVector()));
+		System.out.println("True target for sample 4: " + training_set.get(3).getTarget());
+		System.out.println("Prediction for sample 5: " + ada.getPrediction(training_set.get(4).getInputVector()));
+		System.out.println("True target for sample 5: " + training_set.get(4).getTarget());
 	}
 }
