@@ -1,20 +1,14 @@
 /** 
- * AdaBoostR.java
- * An implementation of AdaBoost for regression. Based on the algorithm in 
- * Zemel, R. S., & Pitassi, T. (2001). A gradient-based boosting algorithm for 
- * regression problems. Advances in neural information processing systems, 696-702.
- * 
- * @author Michelle Shu
- * Last Updated February 1, 2013
+ * AdaBoostRT
+ * UNDER CONSTRUCTION
  */
 
 import java.util.ArrayList;
 
-public class AdaBoostR {
+public class AdaBoostRT {
 	/* Demarcation threshold tau. Roughly reflects the maximum averaged squared
 	 * error we are willing to accept to recruit that learner */
 	private final int TAU = 100;
-	private final double ALPHA = 0.001; // Step size for line search
 	
 	private final int MAX_WL = 100; // Number of weak learners to recruit
 	
@@ -27,6 +21,12 @@ public class AdaBoostR {
 	 * current weight */
 	private ArrayList<TrainingExample> training_set;
 	private int N;	// Number of training examples
+	
+	// parameters for AdaBoostRT
+//	private static final boolean NORMALIZE_DATA = false;
+//	private static final int RT_BOOST_POWER = 2;
+//	private static final double RT_MAX_ERROR = 0.2;
+//	private static final boolean RT_RELATIVE_ERR = true;
 	
 	/** Constructor */
 	public AdaBoostR(ArrayList<TrainingExample> train_set) {
@@ -41,6 +41,75 @@ public class AdaBoostR {
 		System.out.println("N = " + N);
 	}
 	
+	/**
+	 * AdaBoostRT, D.L. Shrestha & D.P. Solomatine, November 9, 2005 (Neural Computaion)
+	 * Experiments with AdaBoost.RT, an Improved Boosting Scheme for Regression
+	 */
+	public void trainAdaBoostRT() {
+		int iter = 0;
+		initializeTrainingDistribution();
+		while (iter < MAX_WL) {
+			WeakLearner wlt = new WeakLearner(training_set);
+			wlt.train();
+
+			// calculate error rate
+			double[] errors = calcRTErrors(wlt);
+			double errRate = 0.0;
+			for (int i = 0; i < training_set.size(); i++) {
+				if (errors[i] > RT_MAX_ERROR) {
+					errRate += training_set.get(i).getRelativeWeight();
+				}
+			}
+			if (0 == errRate) {
+				LogHelper.log("No Errors.  Quit");
+				break;
+			}
+			double beta = Math.pow(errRate, RT_BOOST_POWER);
+
+			// collect WL and set weight for this weak learner only if errRate < 0.5
+//			if (errRate < 0.49) {
+				wl_committee.add(wlt);
+				wlt.setCombCoef(Math.log(1.0/beta));
+				iter++;
+//			}
+//			else {
+//				LogHelper.logln("discard failed weak learner with error rate " + errRate);
+//			}
+
+			// set weight of samples for the next iteration
+			double total_weight = 0;
+			for (int i = 0; i < training_set.size(); i++) {
+				TrainingExample sample = training_set.get(i);
+				double weight = sample.getRelativeWeight();
+				if (errors[i] <= RT_MAX_ERROR) {
+					weight *= beta;
+				}
+				total_weight += weight;
+				sample.setRelativeWeight(weight);  // not normalized yet
+			}
+			for (TrainingExample sample : training_set) {
+				double weight = sample.getRelativeWeight() / total_weight;
+				sample.setRelativeWeight(weight);  // normalized weight
+			}
+
+			// print out iteration result
+			System.out.println("[" + iter + "] WeakLearnerError=" + getError(wlt) + " ErrorRate=" + errRate + " FinalError=" + getError());
+		}
+	}
+
+	private double[] calcRTErrors(WeakLearner wlt) {
+		double[] errors = new double[training_set.size()];
+		for (int i = 0; i < training_set.size(); i++) {
+			double target = training_set.get(i).getTarget();
+			double predicted = wlt.getHypothesis(training_set.get(i).getInputVector());
+			errors[i] = Math.abs(predicted-target);
+			if (RT_RELATIVE_ERR) {
+				errors[i] = errors[i]/Math.abs(target);
+			}
+		}
+		return errors;
+	}
+
 	/* Training Phase:
 	 * 
 	 * 1. Setup
@@ -103,6 +172,44 @@ public class AdaBoostR {
 			sumOfWeights += wlt.getCombCoef();
 		}
 		return weighted_prediction / sumOfWeights;
+	}
+
+	/**
+	 * Return relative error of committee of weak learners
+	 * @return
+	 */
+	public double getError() {
+		double error = 0.0;
+		for (TrainingExample sample : training_set) {
+			double target = sample.getTarget();
+			double prediction = getPrediction(sample.getInputVector());
+			if (RT_RELATIVE_ERR) {
+				error += Math.abs((prediction-target)/target);
+			} else {
+				error += Math.abs(prediction-target);
+			}
+		}
+		return error/training_set.size();
+	}
+
+	/**
+	 * Return relative error of a weak learner
+	 * 
+	 * @param wl the weak learner
+	 * @return
+	 */
+	public double getError(WeakLearner wl) {
+		double error = 0.0;
+		for (TrainingExample sample : training_set) {
+			double target = sample.getTarget();
+			double prediction = wl.getHypothesis(sample.getInputVector());
+			if (RT_RELATIVE_ERR) {
+				error += Math.abs((prediction-target)/target);
+			} else {
+				error += Math.abs(prediction-target);
+			}
+		}
+		return error/training_set.size();
 	}
 
 	/** Initialize training set distribution */
@@ -175,7 +282,11 @@ public class AdaBoostR {
 	 * Minimize the cost Jt (as computed in evaluateCost) with respect to the 
 	 * combination coefficient, ct, of the newly recruited weak learner.
 	 * 
-	 * Use a simple line search with step size ALPHA until we find 
+	 * Minimizing Jt is the same as minimizing ln(Jt).
+	 * Taking the derivative of ln(Jt) and setting it equal to zero gives us
+	 * that the optimal ct is: n / { 2 * SUM (ft(x(i)) - y(i))^2 }
+	 * 
+	 * @return optimal ct for wlt
 	 */
 	private double minimizeCost(WeakLearner wlt) {
 		// Get sum of squared error from examples.
