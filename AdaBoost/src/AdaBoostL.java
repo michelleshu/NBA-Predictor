@@ -11,7 +11,8 @@
 import java.util.ArrayList;
 
 public class AdaBoostL {
-	private final int MAX_WL = 100; // Number of weak learners to recruit
+	private static final int MAX_WL = 100;      // Number of weak learners to recruit
+	private static final int MAX_BAD_WL = 200;  // quit searching if exceeds this number of bad WL
 	
 	/* wl_committee is the set of weak learners that have already been drafted 
 	 * as part of this AdaBoost predictive model */
@@ -23,13 +24,12 @@ public class AdaBoostL {
 
 	// calculate relative errors, instead of absolute errors abs((f-y)/y)
 	private static final boolean RELATIVE_ERR = true;
-	
+	private static final double MAX_WL_ERR = 0.495;
+
 	// parameters for AdaBoostL
 	private static final double L_MAX_ERROR = 25;
 	private static final double L_MIN_ERROR = 5;
-	private static final int L_MAX_BAD_WL = 200;  // quit searching if exceeds this number of bad WL
-	private static final double L_MAX_WL_ERR = 0.495;
-	
+
 	/** Constructor */
 	public AdaBoostL(ArrayList<TrainingExample> train_set) {
 		// List of training examples
@@ -48,7 +48,7 @@ public class AdaBoostL {
 		int wl_collected = 0;
 		int wl_discarded = 0;
 		initializeTrainingDistribution();
-		while (wl_collected < MAX_WL && wl_discarded < L_MAX_BAD_WL) {
+		while (wl_collected < MAX_WL && wl_discarded < MAX_BAD_WL) {
 			WeakLearner wlt = new WeakLearner(training_set);
 			wlt.train();
 
@@ -65,7 +65,7 @@ public class AdaBoostL {
 			double beta = (1.0 - errRate) / errRate;
 
 			// collect WL and set weight for this weak learner only if errRate < 0.5
-			if (errRate < L_MAX_WL_ERR) {
+			if (errRate < MAX_WL_ERR) {
 				wl_committee.add(wlt);
 				wlt.setCombCoef(Math.log(beta));
 				wl_collected++;
