@@ -14,11 +14,12 @@ import java.util.Random;
 
 public class WeakLearner {
 	private final static int SUBSET_SIZE = 8;   // Size of random subset of features
-	private final static double ALPHA = 0.1;	// Initial step size for gradient descent
+	private final static double LAMBDA = 0.0;	// Regularization term for LSR
+	private final static double ALPHA = 0.1;	// Step size for LSR gradient descent
 	private final static double TAU = 0.01;		// Stopping criterion for gradient
 										        // descent convergence
 
-	private final static boolean USE_QUAD_BASIS = false;
+	private final static boolean USE_QUAD_BASIS = true;
 
 	private double alpha;
 	private ArrayList<TrainingExample> training_set;
@@ -59,8 +60,10 @@ public class WeakLearner {
 	}
 
 	/**
-	 * Select feature indices for regression. Select a random subset if the
-	 * size of subset is smaller than size of feature dimensions.
+	 * Select feature indices for regression.
+	 * If USE_TOP_FEATURES=false, use random selection.
+	 * If USE_TOP_FEATURES=true, select feature by correlation coefficient.
+	 * 
 	 * @param rawFeatureCount total number of raw features
 	 */
 	private void selectSubset(int rawFeatureCount) {
@@ -78,8 +81,7 @@ public class WeakLearner {
 			randomList.toArray(subset);
 		}
 
-		// Use the first training sample to count the basis vector, which should
-		// be the same length as theta
+		// Use the first training sample to count the basis vector, which should be the same length as theta
 		double[] features = selectFeatures(training_set.get(0).getInputVector());
 		Double[] basis = getBasisVector(features);
 
@@ -209,6 +211,7 @@ public class WeakLearner {
 		for (int i = 0; i < theta.length; i++) {
 			buff.append(theta[i] + " ");
 		}
+		LogHelper.logln("DEBUG", buff.toString());
 	}
 	
 	/**
@@ -221,9 +224,9 @@ public class WeakLearner {
 	 */
 	private double calcError(double[] gradient) {
 		double error = 0.0;
-		for (int i = 0; i < training_set.size(); i++) {
-			double target = training_set.get(i).getTarget();
-			double[] features = selectFeatures(training_set.get(i).getInputVector());
+		for (TrainingExample sample : training_set) {
+			double target = sample.getTarget();
+			double[] features = selectFeatures(sample.getInputVector());
 			Double[] basis = getBasisVector(features);
 			double prediction = 0;
 			for (int j = 0; j < basis.length; j++) {
@@ -234,20 +237,19 @@ public class WeakLearner {
 				prediction += basis[j] * currTheta;
 			}
 			double diff = prediction - target;
-			double weight = training_set.get(i).getRelativeWeight();
+			double weight = sample.getRelativeWeight();
 			error += 0.5 * diff * diff * weight;
 		}
 		return error;
 	}
 
 	private double[] calcGradient() {
-		// gradient holds the dimensions along feature coordinates of the step
-		// size during a gradient descent iteration
+		// gradient holds delta for calculating theta changes in a gradient descent iteration.
 		double[] gradient = new double[theta.length];
 
-		for (int j = 0; j < theta.length; j++) { // for each dimension
-			// Add up the contribution of each example to theta
-			for (int i = 0; i < training_set.size(); i++) { // for each example
+		for (int j = 0; j < theta.length; j++) { // for each theta
+			// Add up the contribution of each example to theta_j.
+			for (int i = 0; i < training_set.size(); i++) { 
 				double[] features = selectFeatures(training_set.get(i).getInputVector());
 				double target = training_set.get(i).getTarget();
 				Double[] basis = getBasisVector(features);
@@ -255,6 +257,10 @@ public class WeakLearner {
 				// weight reflects the importance of this sample at the current stage in AdaBoost
 				double weight = training_set.get(i).getRelativeWeight();
 				gradient[j] += (getPrediction(basis) - target) * basis[j] * weight;
+			}
+			// Regularize all terms but the bias to prevent overfitting with large theta.
+			if (j != 0) {
+				gradient[j] += LAMBDA * theta[j];
 			}
 		}
 
@@ -272,16 +278,18 @@ public class WeakLearner {
 	}
 
 	private void batchGradientDescent() {
-		// Initialize starting value for error function
+		// initialize starting value for error function
 		double error = calcError(null);
-		// Initialize gradient at the starting point
+		// initialize gradient at the starting point
 		double[] gradient = calcGradient();
 
-		// We say that the weak learner has converged on a minimum when over
-		// 10 iterations, the gradient step does not exceed TAU.
+		// repeat until 10 iterations without significant change of theta
 		int thetaNotChanged = 0;
+		int iter = 0;
 		while (thetaNotChanged < 10) {
-			// Calculate the error at the next theta
+//		while (iter < 2000) {
+			iter++;
+			// calculate the error at the next theta
 			double newError = calcError(gradient);
 			if (newError < error) {
 				// Update all theta values according to gradient
@@ -303,37 +311,56 @@ public class WeakLearner {
 				}
 				error = newError;
 				gradient = calcGradient();
-				
-				// Adaptively increase step size as long as we are still 
-				// decreasing the error term.
 				alpha *= 1.2;
+				printTheta();
+				LogHelper.logln("DEBUG", "Iteration=" + iter + " Alpha=" + alpha + " ThetaChange=" + thetaChange + " ThetaSize=" + thetaSize + " Error=" + error);
 			}
 			else {
-				// Adaptively decrease step size when we have stepped over the
-				// minimum.
 				alpha *= 0.5;
 			}
 		}
 	}
 
 	public static void main(String args[]) {
-		// Read in the training data from filepath specified here.
-		DataParser.processFile("/Users/michelleshu/Documents/2013/CS74/Workspace/AdaBoost/src/data1.txt");
+		LogHelper.initialize("", true);
 
+		// read sample data
+		DataParser.processFile("C:/work/workspace/AdaBoost/src/data1.txt");
+//		DataParser.processFile("C:/work/workspace/AdaBoost/src/nba-2007.csv");
 		ArrayList<TrainingExample> training_set = DataParser.getData();
-		// Set initial relative weights manually here. (AdaBoostR will do it 
-		// for us.)
+		// setup initial weight
 		int sampleSize = training_set.size();
 		for (int i = 1; i < sampleSize; i++) {
 			training_set.get(i).setRelativeWeight(1.0/sampleSize);
 		}
-		
+
+/*		// setup transformer
+		TrainingSetTransformer transformer = new TrainingSetTransformer(training_set);
+		for (int i = 0; i < transformer.inputOffset.length; i++) {
+			LogHelper.logln("DEBUG", "Transformer [" + i + "] = " + transformer.inputOffset[i] + " + " + transformer.inputScale[i] + " v");
+		}
+		LogHelper.logln("DEBUG", "Transformer target = " + transformer.targetOffset + " + " + transformer.targetScale + " t");
+
+		// convert samples to use normalized feature values
+		transformer.transform(training_set);
+*/
+/*
+		// test target conversion
+		double normalized = training_set.get(0).getTarget();
+		System.out.println("Convert normalized target " + normalized + "->" + transformer.toRealTarget(normalized));
+
+		// test estimated normalized correlations
+		TrainingSetTransformer.Correlation[] corrArray = TrainingSetTransformer.estimateCorrelations(training_set);
+		for (TrainingSetTransformer.Correlation corr : corrArray) {
+			System.out.println("Correlation [" + corr.getIndex() + "] = " + corr.getOffset() + " + " + corr.getFactor() + " x");
+		}
+*/
 		WeakLearner wl = new WeakLearner(training_set);
 		wl.train();
 
-		// Test the hypothesis on a training set example.
+		// test Hypothesis
 		double predicted = wl.getHypothesis(wl.training_set.get(1).getInputVector());
 		double actual = training_set.get(1).getTarget();
-		System.out.println("Prediction: " + predicted + "\nActual: " + actual);
+		LogHelper.logln("Predicted=" + predicted + " Actual=" + actual);
 	}
 }

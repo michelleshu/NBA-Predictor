@@ -5,11 +5,11 @@ import java.util.Comparator;
 /**
  * Transform a set of training samples using linear transformation:
  *    x_i = offset_i + scale_i * v_i
- * such that v_i is normalized in range [0, 1]
+ * such that v_i is normalized in range [N1, N2]
  *
  * Transform the target using linear transformation:
  *    y = offset_t + scale_t * w
- * such that w is normalized in range [0, 1]
+ * such that w is normalized in range [N1, N2]
  * 
  * Provide utility to determine approximate linear correlations between v_i and w,
  * so the linear coefficients can be used as the initial values for gradient descent regression.
@@ -17,19 +17,22 @@ import java.util.Comparator;
  * @author
  */
 public class TrainingSetTransformer {
+	public static final int N1 = 1;
+	public static final int N2 = 11;
+
 	double[] inputOffset;  // min value of input feature-i from all samples
 	double[] inputScale;   // (max - min) value of input feature-i from all samples
 	double targetOffset;   // min target value from all samples
 	double targetScale;    // (max - min) target value from all samples
-	
+
 	public TrainingSetTransformer(ArrayList<TrainingExample> training_set) {
 		int inputCount = training_set.get(0).getInputVector().length;
 		inputOffset = new double[inputCount];
 		inputScale = new double[inputCount];
-		targetOffset = Double.MAX_VALUE;          // offset is the min target of all samples
+		targetOffset = Double.MAX_VALUE;          // temporarily store the min target of all samples
 		targetScale = (-1.0) * Double.MAX_VALUE;  // temporarily store max target
 		for (int i = 0; i < inputCount; i++) {
-			inputOffset[i] = Double.MAX_VALUE;          // offset is the min input value of all samples
+			inputOffset[i] = Double.MAX_VALUE;          // temporarily store the min input value of all samples
 			inputScale[i] = (-1.0) * Double.MAX_VALUE;  // temporarily store max input value
 		}
 		for (TrainingExample s : training_set) {
@@ -52,9 +55,11 @@ public class TrainingSetTransformer {
 		}
 
 		// set scale to (max-min)
-		targetScale -= targetOffset;
+		targetScale = (targetScale - targetOffset) / (N2-N1); 	// set scale = (max - min) / (N2 - N1)
+		targetOffset -= targetScale * N1; 						// set offset = (min - scale*N1)
 		for (int i = 0; i < inputCount; i++) {
-			inputScale[i] -= inputOffset[i];
+			inputScale[i] = (inputScale[i] - inputOffset[i]) / (N2-N1);
+			inputOffset[i] -= inputScale[i] * N1;
 		}
 	}
 	
