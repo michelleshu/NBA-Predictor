@@ -26,11 +26,6 @@ public class DataParser {
 		}
 	}
 
-//  for new NBA data	
-//	static final String DELIMITER = ",";
-//	static final int TARGET_COL = 9;  // controls which column is the target
-//	static final int[] FEATURE_COL = new int[]{0, 1, 2, 3, 4, 5, 6, 7};
-
 	public static void conigParser(String delim, int target, int[] cols) {
 		DELIMITER = delim;
 		TARGET_COL = target;

@@ -13,15 +13,20 @@ import java.util.ArrayList;
 import java.util.Random;
 
 public class WeakLearner {
-	private final static int SUBSET_SIZE = 8;   // Size of random subset of features
+	private static int SUBSET_SIZE = 8;         // Size of random subset of features
 	private final static double LAMBDA = 0.0;	// Regularization term for LSR
-	private final static double ALPHA = 0.1;	// Step size for LSR gradient descent
+	private final static double ALPHA = 0.1;	// Initial Step size for LSR gradient descent
 	private final static double TAU = 0.01;		// Stopping criterion for gradient
 										        // descent convergence
 
-	private final static boolean USE_QUAD_BASIS = true;
+	private static boolean USE_QUAD_BASIS = true;  // include quadratic terms if it is true
 
-	private double alpha;
+	public static void configWeakLearner(int subsetSize, boolean useQuad) {
+		SUBSET_SIZE = subsetSize;
+		USE_QUAD_BASIS = useQuad;
+	}
+
+	private double alpha;    // step size for gradient descent, it changes during iterations
 	private ArrayList<TrainingExample> training_set;
 
 	/* Theta is the parameter vector used by this learner after training to 
@@ -287,7 +292,6 @@ public class WeakLearner {
 		int thetaNotChanged = 0;
 		int iter = 0;
 		while (thetaNotChanged < 10) {
-//		while (iter < 2000) {
 			iter++;
 			// calculate the error at the next theta
 			double newError = calcError(gradient);
@@ -324,10 +328,20 @@ public class WeakLearner {
 	public static void main(String args[]) {
 		LogHelper.initialize("", true);
 
+		// config parser to parse all input columns in the new NBA stats
+		int[] features = new int[36];
+		for (int i = 0; i < 36; i++) {
+			features[i] = i;
+		}
+		DataParser.conigParser(",", 37, features);
+
 		// read sample data
-		DataParser.processFile("C:/work/workspace/AdaBoost/src/data1.txt");
-//		DataParser.processFile("C:/work/workspace/AdaBoost/src/nba-2007.csv");
+		DataParser.processFile("C:/work/workspace/NBAStatFetch/data/SEASON-2007.csv");
 		ArrayList<TrainingExample> training_set = DataParser.getData();
+
+		// config WeakLearner to use specified number of features and quad terms
+		configWeakLearner(36, false);
+
 		// setup initial weight
 		int sampleSize = training_set.size();
 		for (int i = 1; i < sampleSize; i++) {

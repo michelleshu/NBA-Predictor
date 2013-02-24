@@ -54,7 +54,7 @@ public class TrainingSetTransformer {
 			}
 		}
 
-		// set scale to (max-min)
+		// set scale and offset values for the transformer
 		targetScale = (targetScale - targetOffset) / (N2-N1); 	// set scale = (max - min) / (N2 - N1)
 		targetOffset -= targetScale * N1; 						// set offset = (min - scale*N1)
 		for (int i = 0; i < inputCount; i++) {

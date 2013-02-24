@@ -203,6 +203,9 @@ public class AdaBoostL {
 		}
 		DataParser.conigParser(",", 37, features);
 
+		// config WeakLearner to use specified number of features and quad terms
+		WeakLearner.configWeakLearner(8, true);
+
 		DataParser.processFile("C:/work/workspace/NBAStatFetch/data/SEASON-2007.csv");
 		ArrayList<TrainingExample> training_set = DataParser.getData();
 		AdaBoostL ada = new AdaBoostL(training_set);
