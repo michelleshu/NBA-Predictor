@@ -17,8 +17,8 @@ import java.util.Comparator;
  * @author
  */
 public class TrainingSetTransformer {
-	public static final int N1 = 1;
-	public static final int N2 = 11;
+	public static final int N1 = 0;  // minimum value of input feature and target after transformation
+	public static final int N2 = 3;  // maximum value of input feature and target after transformation
 
 	double[] inputOffset;  // min value of input feature-i from all samples
 	double[] inputScale;   // (max - min) value of input feature-i from all samples

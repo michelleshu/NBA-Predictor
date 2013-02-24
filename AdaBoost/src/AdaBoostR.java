@@ -13,21 +13,24 @@ import java.util.ArrayList;
 public class AdaBoostR {
 	/* Demarcation threshold tau. Roughly reflects the maximum averaged squared
 	 * error we are willing to accept to recruit that learner */
-	private final int TAU = 100;
-	private final double ALPHA = 0.01; // Step size for line search
-	
-	private final int MAX_WL = 10; // Number of weak learners to recruit
-	
+	private final double TAU = 0.4;
+
+	private final int MAX_WL = 100;             // Number of weak learners to recruit
+	private static final int MAX_BAD_WL = 200;  // quit searching if exceeds this number of bad WL
+
 	/* wl_committee is the set of weak learners that have already been drafted 
 	 * as part of this AdaBoost predictive model */
 	private ArrayList<WeakLearner> wl_committee = new ArrayList<WeakLearner>();
-	private int T = 0;	// number of weak learners in committee
-	
+
 	/* The training_set contains all training examples, who each hold their
 	 * current weight */
 	private ArrayList<TrainingExample> training_set;
 	private int N;	// Number of training examples
-	
+
+	// parameters for data transformer
+	private TrainingSetTransformer transformer = null;
+	private static final boolean NORMALIZE_DATA = true;
+
 	/** Constructor */
 	public AdaBoostR(ArrayList<TrainingExample> train_set) {
 		// List of training examples
@@ -39,8 +42,20 @@ public class AdaBoostR {
 		this.N = this.training_set.size();
 		System.out.println("Adaboost init");
 		System.out.println("N = " + N);
+
+		if (NORMALIZE_DATA) {
+			// setup transformer
+			transformer = new TrainingSetTransformer(training_set);
+			for (int i = 0; i < transformer.inputOffset.length; i++) {
+				LogHelper.logln("DEBUG", "Transformer [" + i + "] = " + transformer.inputOffset[i] + " + " + transformer.inputScale[i] + " v");
+			}
+			LogHelper.logln("DEBUG", "Transformer target = " + transformer.targetOffset + " + " + transformer.targetScale + " t");
+
+			// convert samples to use normalized feature values
+			transformer.transform(training_set);
+		}
 	}
-	
+
 	/* Training Phase:
 	 * 
 	 * 1. Setup
@@ -64,31 +79,39 @@ public class AdaBoostR {
 		// Set a uniform training example distribution to start.
 		initializeTrainingDistribution();
 		System.out.println("Training distribution set");
-		
+
 		// Train MAX_WL weak learners.
 		int iter = 1;
 		while (iter <= MAX_WL) {
-			WeakLearner wlt = new WeakLearner(training_set);
-			
+			WeakLearner wlt;
+			double epsilon = 0.0;
+			int wl_tried = 0;
+
 			// Accept the weak learner if it passes the demarcation test.
 			// Otherwise, train a new weak learner.
-			while (!passDemarcationTest(wlt)) {
+			do {
 				wlt = new WeakLearner(training_set);
+				wlt.train();
+				epsilon = demarcationValue(wlt);
+				wl_tried++;
+				System.out.println("Tried " + wl_tried + " WL.  epsilon = " + epsilon);
+			} while (epsilon >= 1.0 && wl_tried <= MAX_BAD_WL);
+
+			if (wl_tried > MAX_BAD_WL) {
+				break;  // quit if cannot find more qualified WL
 			}
-			
+
 			wl_committee.add(wlt);
-			wlt.train();
 
 			// Set the combination coefficient of the learner.
 			minimizeCost(wlt);
 			// Update training distribution.
 			updateTrainingDistribution(wlt);
-			
+
 			// Print result of adding wlt to console.
 			System.out.println("[" + iter + "] WL Error = " + getWLError(wlt) + 
-					" WL Weight = " + wlt.getCombCoef() + 
+					" WL Weight = " + wlt.getCombCoef() +
 					" AdaBoostR Error = " + getCommitteeError());
-			
 			iter++;
 		}
 		System.out.println("Training phase complete.");
@@ -113,6 +136,11 @@ public class AdaBoostR {
 		for (TrainingExample example : training_set) {
 			double target = example.getTarget();
 			double prediction = wl.getHypothesis(example.getInputVector());
+			if (transformer != null) {
+				// convert to real value from the normalized data
+				target = transformer.toRealTarget(target);
+				prediction = transformer.toRealTarget(prediction);
+			}
 			error_sum += Math.abs((prediction - target) / target);
 		}
 		return error_sum / training_set.size();
@@ -127,6 +155,11 @@ public class AdaBoostR {
 		for (TrainingExample example : training_set) {
 			double target = example.getTarget();
 			double prediction = getPrediction(example.getInputVector());
+			if (transformer != null) {
+				// convert to real value from the normalized data
+				target = transformer.toRealTarget(target);
+				prediction = transformer.toRealTarget(prediction);
+			}
 			error_sum += Math.abs((prediction - target) / target);
 		}
 		return error_sum / training_set.size();
@@ -166,14 +199,14 @@ public class AdaBoostR {
 	 * epsilon = SUM (over i examples) { p(i) * exp[(f(x(i)) - y(i))^2 - TAU] },
 	 * where p represents the relative weight of training example i.
 	 */
-	private boolean passDemarcationTest(WeakLearner wl) {
+	private double demarcationValue(WeakLearner wl) {
 		double epsilon = 0;
 		for (int i = 0; i < N; i++) {
 			TrainingExample example = training_set.get(i);
 			double exp_term = Math.exp(squaredError(wl, example) - TAU);
 			epsilon += example.getRelativeWeight() * exp_term;
 		}
-		return (epsilon < 1);
+		return epsilon;
 	}
 	
 	/**
@@ -350,9 +383,19 @@ public class AdaBoostR {
 	}
 
 	public static void main(String[] args) {
-		DataParser.processFile("/Users/michelleshu/Documents/2013/CS74/Workspace/AdaBoost/src/test.txt");
+		LogHelper.initialize("AdaBoost", false);
+
+		// config parser to parse new NBA stats
+		int[] features = new int[36];
+		for (int i = 0; i < 36; i++) {
+			features[i] = i;
+		}
+		DataParser.conigParser(",", 37, features);
+
+		DataParser.processFile("C:/work/workspace/NBAStatFetch/data/SEASON-2007.csv");
+//		DataParser.processFile("/Users/michelleshu/Documents/2013/CS74/Workspace/AdaBoost/src/test.txt");
 		ArrayList<TrainingExample> training_set = DataParser.getData();
-		
+
 		AdaBoostR ada = new AdaBoostR(training_set);
 
 		// Train AdaBoostR
