@@ -1,11 +1,9 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 
 import com.google.gson.Gson;
@@ -19,8 +17,8 @@ public class NBAStatBrowser {
 	 * @throws FileNotFoundException 
 	 */
 	public static void main(String[] args) throws FileNotFoundException {
-		String season = "2007-08";  // specify a season to browse and save game stats
-		String outFile = "/Users/michelleshu/Documents/2013/CS74/Workspace/NBAStatFetch/07.csv";
+		String season = "2012-13";  // specify a season to browse and save game stats
+		String outFile = "C:/work/workspace/NBAStatFetch/data/2012.csv";
 
 		games = new HashMap<String, Game>();
 		NBAData teamData = getTeamBaseStats(season);
@@ -181,147 +179,5 @@ public class NBAStatBrowser {
 		private String name;
 		private String[] headers;
 		private String[][] rowSet;
-	}
-
-	public static class Game {
-		String gameId;
-		Date gameDate;
-		String homeTeamId;
-		String homeTeamName;
-		int homeTeamScore;
-		GameStatistics homeStats;
-		String roadTeamId;
-		String roadTeamName;
-		int roadTeamScore;
-		GameStatistics roadStats;
-
-		public Game(String gameId, HashMap<String, Integer> columns, String[] row) {
-			this.gameId = gameId;
-
-			SimpleDateFormat fmt = new SimpleDateFormat("MMM dd, yyyy");
-			String dateStr = row[columns.get("GAME_DATE")];
-			try {
-				gameDate = fmt.parse(dateStr);
-			} catch (Exception e) {}
-
-			updateGame(columns, row);
-		}
-
-		public void updateGame(HashMap<String, Integer> columns, String[] row) {
-			String matchup = row[columns.get("MATCHUP")];
-			String[] tokens = matchup.split(" ");
-			if (matchup.indexOf("@") > 0) {
-				roadTeamId = row[columns.get("Team_ID")];
-				roadTeamName = tokens[0];
-				roadTeamScore = Integer.parseInt(row[columns.get("PTS")]);
-				roadStats = new GameStatistics(columns, row);
-				homeTeamName = tokens[2];
-			} else {
-				homeTeamId = row[columns.get("Team_ID")];
-				homeTeamName = tokens[0];
-				homeTeamScore = Integer.parseInt(row[columns.get("PTS")]);
-				homeStats = new GameStatistics(columns, row);
-				roadTeamName = tokens[2];
-			}
-		}
-
-		public static String gameHeader() {
-			StringBuffer buff = new StringBuffer();
-			buff.append("gameId,");
-			buff.append("gameDate,");
-			buff.append("homeTeamId,");
-			buff.append("homeTeamName,");
-			buff.append("homeTeamScore,");
-			buff.append(GameStatistics.gameStatsHeader()).append(",");
-			buff.append("roadTeamId,");
-			buff.append("roadTeamName,");
-			buff.append("roadTeamScore,");
-			buff.append(GameStatistics.gameStatsHeader());
-			return buff.toString();
-		}
-
-		public String toString() {
-			StringBuffer buff = new StringBuffer();
-			SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd");
-			buff.append(gameId).append(",");
-			buff.append(fmt.format(gameDate)).append(",");
-			buff.append(homeTeamId).append(",");
-			buff.append(homeTeamName).append(",");
-			buff.append(homeTeamScore).append(",");
-			buff.append(homeStats.toString()).append(",");
-			buff.append(roadTeamId).append(",");
-			buff.append(roadTeamName).append(",");
-			buff.append(roadTeamScore).append(",");
-			buff.append(roadStats.toString());
-			return buff.toString();
-		}
-	}
-
-	public static class GameStatistics {
-		int FGM;  // field goals made
-		int FGA;  // field goals attempted
-		int FG3M; // 3-point field goals made
-		int FG3A; // 3-point field goals attempted
-		int FTM;  // free throws made
-		int FTA;  // free throws attempted
-		int OREB; // offensive rebounds
-		int DREB; // defensive rebounds
-		int AST;  // assists
-		int STL;  // steals
-		int BLK;  // blocks
-		int TOV;  // turn-overs
-		int PF;   // personal fouls
-
-		public GameStatistics(HashMap<String, Integer> columns, String[] row) {
-			FGM = Integer.parseInt(row[columns.get("FGM")]);
-			FGA = Integer.parseInt(row[columns.get("FGA")]);
-			FG3M = Integer.parseInt(row[columns.get("FG3M")]);
-			FG3A = Integer.parseInt(row[columns.get("FG3A")]);
-			FTM = Integer.parseInt(row[columns.get("FTM")]);
-			FTA = Integer.parseInt(row[columns.get("FTA")]);
-			OREB = Integer.parseInt(row[columns.get("OREB")]);
-			DREB = Integer.parseInt(row[columns.get("DREB")]);
-			AST = Integer.parseInt(row[columns.get("AST")]);
-			STL = Integer.parseInt(row[columns.get("STL")]);
-			BLK = Integer.parseInt(row[columns.get("BLK")]);
-			TOV = Integer.parseInt(row[columns.get("TOV")]);
-			PF = Integer.parseInt(row[columns.get("PF")]);
-		}
-
-		public static String gameStatsHeader() {
-			StringBuffer buff = new StringBuffer();
-			buff.append("FGM,");
-			buff.append("FGA,");
-			buff.append("FG3M,");
-			buff.append("FG3A,");
-			buff.append("FTM,");
-			buff.append("FTA,");
-			buff.append("OREB,");
-			buff.append("DREB,");
-			buff.append("AST,");
-			buff.append("STL,");
-			buff.append("BLK,");
-			buff.append("TOV,");
-			buff.append("PF");
-			return buff.toString();
-		}
-
-		public String toString() {
-			StringBuffer buff = new StringBuffer();
-			buff.append(FGM).append(",");
-			buff.append(FGA).append(",");
-			buff.append(FG3M).append(",");
-			buff.append(FG3A).append(",");
-			buff.append(FTM).append(",");
-			buff.append(FTA).append(",");
-			buff.append(OREB).append(",");
-			buff.append(DREB).append(",");
-			buff.append(AST).append(",");
-			buff.append(STL).append(",");
-			buff.append(BLK).append(",");
-			buff.append(TOV).append(",");
-			buff.append(PF);
-			return buff.toString();
-		}
 	}
 }
