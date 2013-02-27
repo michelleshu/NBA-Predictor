@@ -35,7 +35,7 @@ public class AdaBoostRT {
 	private static final int RT_BOOST_POWER = 2;
 
 	// threshold to consider a saple prediction correct.  Result is sensitive to this parameter
-	private static final double RT_MAX_ERROR = 0.17;  
+	private static final double RT_MAX_ERROR = 0.19;  
 
 	/** Constructor */
 	public AdaBoostRT(ArrayList<TrainingExample> train_set) {
@@ -259,6 +259,9 @@ public class AdaBoostRT {
 			features[i] = i;
 		}
 		DataParser.conigParser(",", 37, features);
+
+		// config WeakLearner to use specified number of features and quad terms
+		WeakLearner.configWeakLearner(8, true);
 
 		DataParser.processFile("C:/work/workspace/NBAStatFetch/data/SEASON-2007.csv");
 		ArrayList<TrainingExample> training_set = DataParser.getData();
