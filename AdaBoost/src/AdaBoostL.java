@@ -8,16 +8,19 @@
  * Last Updated February 1, 2013
  */
 
+import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class AdaBoostL {
 	private static final int MAX_WL = 100;      // Number of weak learners to recruit
 	private static final int MAX_BAD_WL = 200;  // quit searching if exceeds this number of bad WL
-	
+
 	/* wl_committee is the set of weak learners that have already been drafted 
 	 * as part of this AdaBoost predictive model */
 	private ArrayList<WeakLearner> wl_committee = new ArrayList<WeakLearner>();
-	
+
 	/* The training_set contains all training examples, who each hold their
 	 * current weight */
 	private ArrayList<TrainingExample> training_set;
@@ -47,7 +50,10 @@ public class AdaBoostL {
 	public void trainAdaBoostL() {
 		int wl_collected = 0;
 		int wl_discarded = 0;
-		initializeTrainingDistribution();
+		int size = training_set.size();
+		for (TrainingExample sample : training_set) {
+			sample.setRelativeWeight(1.0/size);
+		}
 		while (wl_collected < MAX_WL && wl_discarded < MAX_BAD_WL) {
 			WeakLearner wlt = new WeakLearner(training_set);
 			wlt.train();
@@ -92,7 +98,7 @@ public class AdaBoostL {
 			}
 
 			// print out iteration result
-			System.out.println("[" + wl_collected + "] WeakLearnerError=" + getError(wlt) + " ErrorRate=" + errRate + " FinalError=" + getError());
+			System.out.println("[" + wl_collected + "] WeakLearnerError=" + getError(wlt) + " ErrorRate=" + errRate + " FinalError=" + getError(training_set));
 		}
 	}
 
@@ -149,9 +155,9 @@ public class AdaBoostL {
 	 * Return relative error of committee of weak learners
 	 * @return
 	 */
-	public double getError() {
+	public double getError(ArrayList<TrainingExample> testSet) {
 		double error = 0.0;
-		for (TrainingExample sample : training_set) {
+		for (TrainingExample sample : testSet) {
 			double target = sample.getTarget();
 			double prediction = getPrediction(sample.getInputVector());
 			if (RELATIVE_ERR) {
@@ -160,7 +166,7 @@ public class AdaBoostL {
 				error += Math.abs(prediction-target);
 			}
 		}
-		return error/training_set.size();
+		return error/testSet.size();
 	}
 
 	/**
@@ -183,15 +189,56 @@ public class AdaBoostL {
 		return error/training_set.size();
 	}
 
-	/** Initialize training set distribution */
-	private void initializeTrainingDistribution() {
-		// Initialize all weights and relative weights of examples to 1/N.
-		int size = training_set.size();
-		for (int i = 0; i < size; i++) {
-			training_set.get(i).setWeight(1.0/size);
-			training_set.get(i).setRelativeWeight(1.0/size);
+	/**
+	 * write iteration results to a file
+	 * @param filename
+	 */
+	public void writeBoostResults(String filename) {
+		FileWriter out = null;
+		try {
+			// sort samples according to target value
+			Collections.sort(training_set, new Comparator<TrainingExample>() {
+				public int compare(TrainingExample t1, TrainingExample t2) {
+					if (t1.getTarget() < t2.getTarget()) {
+						return -1;
+					} else if (t1.getTarget() > t2.getTarget()) {
+						return 1;
+					} else {
+						return 0;
+					}
+				}
+			});
+
+			// write output file
+			out = new FileWriter(filename, true);
+			for (TrainingExample sample : training_set) {
+				double target = sample.getTarget();
+				double[] input = sample.getInputVector();
+
+				// comma-delimited prediction errors for each iteration
+				StringBuffer buff = new StringBuffer();
+				buff.append(target).append(',');
+				double prediction = 0;
+				double sumOfWeights = 0;
+				for (WeakLearner wlt : wl_committee) {
+					prediction += (wlt.getCombCoef() * wlt.getHypothesis(input));
+					sumOfWeights += wlt.getCombCoef();
+					buff.append(prediction / sumOfWeights - target).append(',');
+				}
+				buff.append(prediction / sumOfWeights);
+				out.write(buff.toString());
+				out.append('\n');
+				out.flush();
+			}
+		} catch (Exception e) {
+			LogHelper.logln("Failed to write iteration result " + e.getMessage());
+		} finally {
+			try {
+				out.close();
+			} catch (Exception ex) {}
 		}
 	}
+
 
 	public static void main(String[] args) {
 		LogHelper.initialize("AdaBoost", false);
@@ -212,5 +259,14 @@ public class AdaBoostL {
 
 		// call AdaBoostL with linear error function
 		ada.trainAdaBoostL();
+
+		// write iteration results
+		ada.writeBoostResults("c:/temp/boost.csv");
+
+		// check new test samples
+		for (int i = 2008; i < 2012; i++) {
+			DataParser.processFile("C:/work/workspace/NBAStatFetch/data/SEASON-" + i + ".csv");
+			System.out.println("SEASON-" + i + " Error: " + ada.getError(DataParser.getData()));
+		}
 	}
 }

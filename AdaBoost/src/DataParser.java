@@ -32,8 +32,7 @@ public class DataParser {
 		FEATURE_COL = cols;
 	}
 
-	public static ArrayList<TrainingExample> examplesIn = 
-			new ArrayList<TrainingExample>();
+	public static ArrayList<TrainingExample> examplesIn;
 
 	/** Get all examples that have already been read. */
 	public static ArrayList<TrainingExample> getData() {
@@ -64,6 +63,7 @@ public class DataParser {
 
 	/** Read entire file, processing line by line */
 	public static void processFile(String filepath) {
+		examplesIn = new ArrayList<TrainingExample>();
 		try {	
 			// Open input streams
 			FileInputStream fstream = new FileInputStream(filepath);

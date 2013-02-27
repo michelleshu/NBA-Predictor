@@ -9,8 +9,7 @@
  * Last Updated February 14, 2013
  */
 
-import java.io.File;
-import java.io.PrintWriter;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -66,6 +65,10 @@ public class WeakLearner {
  		 * and store them in variable subset.
 		 */
 		selectSubset(training_set.get(0).getInputVector().length);
+	}
+
+	public ArrayList<TrainingExample> getTrainingSet() {
+		return training_set;
 	}
 
 	/**
@@ -328,13 +331,12 @@ public class WeakLearner {
 				alpha *= 0.5;
 			}
 		}
-
-		// print iteration results
 	}
 
 	// helper for charting iteration results
 	ArrayList<double[]> thetaList = new ArrayList<double[]>();
 
+	// save theta of the current iteration, so it can be used for print out intermediate results
 	private void saveIteration() {
 		double[] newTheta = new double[theta.length];
 		for (int i = 0; i < theta.length; i++) {
@@ -343,10 +345,14 @@ public class WeakLearner {
 		thetaList.add(newTheta);
 	}
 
-	public void writeIterationResults(String filename) {
-		PrintWriter out = null;
+	/**
+	 * write iteration results to a file
+	 * @param filename
+	 */
+	public void writeIterationResults(String filename, boolean append) {
+		FileWriter out = null;
 		try {
-			out = new PrintWriter(new File(filename));
+			out = new FileWriter(filename, append);
 			int majorBasis = getMajorBasis();
 			if (majorBasis == 0)
 				return;
@@ -376,27 +382,34 @@ public class WeakLearner {
 
 				// comma-delimited prediction errors for each iteration
 				StringBuffer buff = new StringBuffer();
+				buff.append(featureIndices[0]).append(',');
+				buff.append(featureIndices[1]).append(',');
 				buff.append(majorValue).append(',');
 				buff.append(target).append(',');
+				double prediction = 0;
 				for (int j = 0; j < thetaList.size()-10; j++) {
 					double[] ths = thetaList.get(j);
-					double prediction = 0;
+					prediction = 0;
 					for (int i = 0; i < ths.length; i++) {
 						prediction += ths[i] * basis[i];
 					}
 					buff.append(prediction - target).append(',');
 				}
-				buff.append(featureIndices[0]).append(',');
-				buff.append(featureIndices[1]);
-				out.println(buff.toString());
+				buff.append(prediction);
+				out.write(buff.toString());
+				out.append('\n');
+				out.flush();
 			}
 		} catch (Exception e) {
 			LogHelper.logln("Failed to write iteration result " + e.getMessage());
 		} finally {
-			out.close();
+			try {
+				out.close();
+			} catch (Exception ex) {}
 		}
 	}
 
+	// find the index of basis that contribute the most to the final result
 	private int getMajorBasis() {
 		// calculate values of individual basis features
 		double[] contributors = null;
@@ -423,7 +436,7 @@ public class WeakLearner {
 		return maxIndex;
 	}
 
-	// convert the most valuable basis into feature indices
+	// convert a index of a theta basis into feature indices (2 indices only if quad terms are included)
 	private int[] getFeatureIndices(int basisIndex) {
 		int[] indices = new int[]{-1, -1};
 		if (basisIndex == 0) {
@@ -465,7 +478,7 @@ public class WeakLearner {
 		ArrayList<TrainingExample> training_set = DataParser.getData();
 
 		// config WeakLearner to use specified number of features and quad terms
-		configWeakLearner(36, false);
+		configWeakLearner(9, true);
 
 		// setup initial weight
 		int sampleSize = training_set.size();
@@ -498,7 +511,7 @@ public class WeakLearner {
 		wl.train();
 
 		// write iteration results for chart
-		wl.writeIterationResults("C:/temp/wldata.csv");
+		wl.writeIterationResults("C:/temp/wldata.csv", false);
 
 		// test Hypothesis
 		double predicted = wl.getHypothesis(wl.training_set.get(1).getInputVector());
