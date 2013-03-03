@@ -19,7 +19,7 @@ import java.util.HashMap;
 
 public class NBAStatCalculator {
 	static HashMap<String, Team> teams;
-	static final int EARLY_SEASON = 5;	// Number of early season games to
+	static final int EARLY_SEASON = 10;	// Number of early season games to
 										// exclude from averages.
 
 	static int getTeamCount() {
@@ -109,29 +109,34 @@ public class NBAStatCalculator {
 			out = new PrintWriter(new File(statFile));
 			for (Team team : teams.values()) {
 				for (Game g : team.getHomeGames()) {
-					StringBuffer buff = new StringBuffer();
-					
-					/* Represent each game as a line of comma-separated values.
-					 * Add the major feature statistics of team history for:
-					 * 1. Home team history
-					 * 2. Home team opponent history
-					 * 3. Road team history
-					 * 4. Road team opponent history
-					 */
-					buff.append(g.seasonHomeAvg.getMajorTeamStats()).append(",");
-					buff.append(g.seasonHomeOppAvg.getMajorTeamStats()).append(",");
-					buff.append(g.seasonRoadAvg.getMajorTeamStats()).append(",");
-					buff.append(g.seasonRoadOppAvg.getMajorTeamStats()).append(",");
-					
-					/* Then add the two betting features: The difference in
-					 * scores for the two teams for Against the Spread and the
-					 * sum of the two team's scores for Over/Under.
-					 */
-					buff.append(g.homeStats.getTotalScore() - 
-							g.roadStats.getTotalScore()).append(",");
-					buff.append(g.homeStats.getTotalScore() + 
-							g.roadStats.getTotalScore());
-					out.println(buff.toString());
+					if (g.seasonHomeAvg != null && g.seasonRoadAvg != null) {
+						StringBuffer buff = new StringBuffer();
+						
+						/* Represent each game as a line of comma-separated values.
+						 * Add the major feature statistics of team history for:
+						 * 1. Home team history
+						 * 2. Home team opponent history
+						 * 3. Road team history
+						 * 4. Road team opponent history
+						 */
+						buff.append(g.seasonHomeAvg.getMajorTeamStats()).append(",");
+						buff.append(g.seasonHomeOppAvg.getMajorTeamStats()).append(",");
+						buff.append(g.seasonRoadAvg.getMajorTeamStats()).append(",");
+						buff.append(g.seasonRoadOppAvg.getMajorTeamStats()).append(",");
+						
+						/* Then add the two betting features: The difference in
+						 * scores for the two teams for Against the Spread and the
+						 * sum of the two team's scores for Over/Under.
+						 */
+						buff.append(g.homeStats.getTotalScore() - 
+								g.roadStats.getTotalScore()).append(",");
+						buff.append(g.homeStats.getTotalScore() + 
+								g.roadStats.getTotalScore()).append(",");
+						buff.append(g.getHomeTeam()).append(",");
+						buff.append(g.getRoadTeam()).append(",");
+						buff.append(g.gameDate.toString());
+						out.println(buff.toString());
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -191,8 +196,10 @@ public class NBAStatCalculator {
 				gamesPlayed++;
 
 				Game nextGame = homeGames.get(i+1);
-				nextGame.setSeasonHomeAvg(seasonTotal.calcAverage(gamesPlayed));
-				nextGame.setSeasonHomeOppAvg(seasonOppTotal.calcAverage(gamesPlayed));
+				if (gamesPlayed > EARLY_SEASON) {
+					nextGame.setSeasonHomeAvg(seasonTotal.calcAverage(gamesPlayed));
+					nextGame.setSeasonHomeOppAvg(seasonOppTotal.calcAverage(gamesPlayed));
+				}
 			}
 		}
 
@@ -209,18 +216,20 @@ public class NBAStatCalculator {
 				gamesPlayed++;
 
 				Game nextGame = roadGames.get(i+1);
-				nextGame.setSeasonRoadAvg(seasonTotal.calcAverage(gamesPlayed));
-				nextGame.setSeasonRoadOppAvg(seasonOppTotal.calcAverage(gamesPlayed));
+				if (gamesPlayed > EARLY_SEASON) {
+					nextGame.setSeasonRoadAvg(seasonTotal.calcAverage(gamesPlayed));
+					nextGame.setSeasonRoadOppAvg(seasonOppTotal.calcAverage(gamesPlayed));
+				}
 			}
 		}
 
 	}
 
 	public static void main(String args[]) {
-		for (int season=2007; season < 2013; season++) {
-			readGameFile("data/" + season + ".csv");
+		for (int season = 2012; season < 2013; season++) {
+			readGameFile("data/" + season + "-RAW.csv");
 			if (getTeamCount() > 0) {
-				writeGameStats("data/SEASON-" + season + ".csv");
+				writeGameStats("data/" + season + "-SEASON-TEST.csv");
 			}
 		}
 	}

@@ -4,13 +4,16 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+/**
+ * HttpUtil.java
+ * Utility to communicate with HTTP Server
+ * 
+ * @author Michelle Shu with help from my dad, Yueming Xu
+ */
 public class HttpUtil {
 
 	/**
 	 * Send an HTTP GET request, and return the response data
-	 * 
-	 * @param serverUrl
-	 * @return
 	 */
 	public static String getData(String serverUrl) {
 		HttpURLConnection conn = null;
@@ -23,7 +26,6 @@ public class HttpUtil {
 			conn.setDoOutput(true);
 			conn.setRequestProperty("Content-Language", "en-US");
 			conn.setReadTimeout(10000);
-//			conn.connect();
 
 			// read response from the server
 			BufferedReader rd = new BufferedReader(new InputStreamReader(
@@ -49,10 +51,6 @@ public class HttpUtil {
 	/**
 	 * Send an HTTP POST request with list of parameters, return the response message.
 	 * Use this method if parameter list is too long for an HTTP GET request
-	 * 
-	 * @param serverUrl the HTTP server URL
-	 * @param parameters the request parameters, e.g., terms=no_value&terms=201209&terms=201301&depts=no_value&depts=COSC&depts=PSYC&sortorder=dept
-	 * @return
 	 */
 	public static String postParameters(String serverUrl, String parameters) {
 		HttpURLConnection conn = null;
@@ -104,10 +102,6 @@ public class HttpUtil {
 	/**
 	 * Send an HTTP POST request to invoke SOAP web-service, return the response message.
 	 * Update the request properties to support other types of POST requests.
-	 * 
-	 * @param serverUrl
-	 * @param content
-	 * @return
 	 */
 	public static String postData(String serverUrl, String content) {
 		HttpURLConnection conn = null;
@@ -154,13 +148,5 @@ public class HttpUtil {
 			}
 		}
 		return response;
-	}
-
-	/**
-	 * Unit tests
-	 * @param args
-	 */
-	public static void main(String[] args) {
-
 	}
 }

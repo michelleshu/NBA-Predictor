@@ -289,7 +289,7 @@ public class AdaBoostRT {
 	public static void main(String[] args) {
 
 		// Get training set
-		DataParser.processFile("data/SEASON-2007.csv", false);
+		DataParser.processFile("data/2010-SEASON.csv", false);
 		ArrayList<TrainingExample> training_set = DataParser.getData();
 		System.out.println("Training Set N = " + training_set.size());
 		System.out.println(training_set.get(100).getTarget());
@@ -311,7 +311,7 @@ public class AdaBoostRT {
 		
 		// Get test set and test AdaBoostRT model on test data
 		DataParser.clear();
-		DataParser.processFile("data/SEASON-2012-TEST.csv", true);
+		DataParser.processFile("data/2012-SEASON-TEST.csv", true);
 		ada.test_set = DataParser.getData();
 		System.out.println("Test Set N = " + ada.test_set.size());
 		System.out.println("Test Set Average Absolute Error = " + 

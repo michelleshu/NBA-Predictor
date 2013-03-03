@@ -19,14 +19,6 @@ public class Game {
 		this.seasonHomeOppAvg = seasonHomeOppAvg;
 	}
 
-	public void setTenHomeAvg(GameStatistics tenHomeAvg) {
-		this.tenHomeAvg = tenHomeAvg;
-	}
-
-	public void setTenHomeOppAvg(GameStatistics tenHomeOppAvg) {
-		this.tenHomeOppAvg = tenHomeOppAvg;
-	}
-
 	public void setSeasonRoadAvg(GameStatistics seasonRoadAvg) {
 		this.seasonRoadAvg = seasonRoadAvg;
 	}
@@ -35,28 +27,16 @@ public class Game {
 		this.seasonRoadOppAvg = seasonRoadOppAvg;
 	}
 
-	public void setTenRoadAvg(GameStatistics tenRoadAvg) {
-		this.tenRoadAvg = tenRoadAvg;
-	}
-
-	public void setTenRoadOppAvg(GameStatistics tenRoadOppAvg) {
-		this.tenRoadOppAvg = tenRoadOppAvg;
-	}
-
 	String gameId;
 	Date gameDate;
 	String homeTeamId;
 	GameStatistics homeStats;
 	GameStatistics seasonHomeAvg;
 	GameStatistics seasonHomeOppAvg;
-	GameStatistics tenHomeAvg;
-	GameStatistics tenHomeOppAvg;
 	String roadTeamId;
 	GameStatistics roadStats;
 	GameStatistics seasonRoadAvg;
 	GameStatistics seasonRoadOppAvg;
-	GameStatistics tenRoadAvg;
-	GameStatistics tenRoadOppAvg;
 
 	/** Constructor for NBADataParser */
 	public Game(String gameId, HashMap<String, Integer> columns, String[] row) {

@@ -5,20 +5,24 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-
 import com.google.gson.Gson;
+
+/**
+ * NBAStatBrowser.java
+ * 
+ * Retrieves individual game data from NBA.com by communicating via Gson
+ * utility with internal database
+ * 
+ * @author Michelle Shu with help from my dad, Yueming Xu
+ */
 
 public class NBAStatBrowser {
 
 	static HashMap<String, Game> games;  // hash on Game_ID, each game need to be updated twice
 
-	/**
-	 * @param args
-	 * @throws FileNotFoundException 
-	 */
 	public static void main(String[] args) throws FileNotFoundException {
-		String season = "2006-07";  // specify a season to browse and save game stats
-		String outFile = "data/2007.csv";
+		String season = "2011-12";  // specify a season to browse and save game stats
+		String outFile = "data/2012-RAW.csv";
 
 		games = new HashMap<String, Game>();
 		NBAData teamData = getTeamBaseStats(season);
@@ -40,7 +44,6 @@ public class NBAStatBrowser {
 
 	/**
 	 * Sort the collected games in ascending order by game date
-	 * @return
 	 */
 	public static ArrayList<Game> getSortedGameList() {
 		ArrayList<Game> gameList = new ArrayList<Game>(games.values());
@@ -64,7 +67,6 @@ public class NBAStatBrowser {
 	/**
 	 * Browse list of NBA teams in a specified season.
 	 * Result contains base statistics of a team. Parameters can be used for more advanced stats.
-	 * 
 	 * @param season , e.g., 2012-13
 	 * @return NBA league dash team stats
 	 */
