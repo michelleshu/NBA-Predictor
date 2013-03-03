@@ -1,68 +1,99 @@
 /** 
- * AdaBoostR.java
- * An implementation of AdaBoost for regression. Based on the algorithm in 
- * Zemel, R. S., & Pitassi, T. (2001). A gradient-based boosting algorithm for 
- * regression problems. Advances in neural information processing systems, 696-702.
+ * AdaBoostRT.java
+ * An implementation of AdaBoostRT for regression. Based on the algorithm in 
+ * Shrestha, D.L. and Solomatine, D.P. (2006). "Experiments with AdaBoost.RT,
+ * an Improved Boosting Scheme for Regression". Neural Computation. 18: 1678-1710.
  * 
  * @author Michelle Shu
- * Last Updated February 1, 2013
+ * Last Updated February 23, 2013
  */
 
-import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 
 public class AdaBoostRT {
 	private static final int MAX_WL = 100;      // Number of weak learners to recruit
-	private static final int MAX_BAD_WL = 200;  // quit searching if exceeds this number of bad WL
+	private static final int MAX_BAD_WL = 200;  // Quit upon exceeding this number
+												// of bad learners
 	
 	/* wl_committee is the set of weak learners that have already been drafted 
-	 * as part of this AdaBoost predictive model */
+	 * as part of this AdaBoostRT model */
 	private ArrayList<WeakLearner> wl_committee;
 
 	/* The training_set contains all training examples, who each hold their
 	 * current weight */
 	private ArrayList<TrainingExample> training_set;
+	
+	/* The test_set contains all test examples */
+	public ArrayList<TrainingExample> test_set;
 
-	// calculate relative errors, instead of absolute errors abs((f-y)/y)
+	/* If RELATIVE_ERR is true, measure error by relative value abs(error / target)
+	 * If RELATIVE_ERR is false, measure error by absolute value abs(error) */
 	private static final boolean RELATIVE_ERR = true;
+	
+	/* MAX_WL_ERROR defines our standard for accepting the weak learner into
+	 * our committee. If the weak learner cannot meet this minimum standard,
+	 * we discard it.
+	 */
 	private static final double MAX_WL_ERR = 0.495;
 
-	// parameters for AdaBoostRT
 	private TrainingSetTransformer transformer = null;
 	private static final boolean NORMALIZE_DATA = false;
+	
+	/* RT_BOOST_POWER is a power coefficient (e.g. linear, square or cubic)
+	 * that determines boosting behavior.
+	 */
 	private static final int RT_BOOST_POWER = 2;
 
-	// threshold to consider a saple prediction correct.  Result is sensitive to this parameter
-	private static final double RT_MAX_ERROR = 0.19;  
+	/* A threshold for demarcation of correct and incorrect predictions. 
+	 * In algorithm, this is denoted mathematically with PHI. The threshold 
+	 * value must be strictly between 0 and 1 */
+	private static final double RT_MAX_ERROR = 0.20; 
+	
+	/* 0 is difference, 1 is cumulative */
+	private static final int BET_TYPE = 1;
 
 	/** Constructor */
 	public AdaBoostRT(ArrayList<TrainingExample> train_set) {
 		// List of training examples
 		this.training_set = train_set;
 
-		// We make a new empty array for weak learner committee.
+		// Recruited weak learners
 		this.wl_committee = new ArrayList<WeakLearner>();
 
-		System.out.println("Adaboost init");
+		System.out.println("AdaboostRT initialized.");
 	}
 
-	/**
-	 * AdaBoostRT, D.L. Shrestha & D.P. Solomatine, November 9, 2005 (Neural Computaion)
-	 * Experiments with AdaBoost.RT, an Improved Boosting Scheme for Regression
+	/*
+	 * Training Phase:
+	 * 1. Inputs: training set, weak learner algorithm and RT_MAX_ERROR 
+	 * 		(a threshold for demarcation of correct and incorrect predictions)
+	 * 2. Initialize: Even distribution of training examples, error rate = 0
+	 * 3. Iterate:
+	 * 		a. Train a weak learner with current training set distribution.
+	 * 		b. Calculate absolute relative error (ARE) for each training example
+	 * 		c. Set the error rate to the weighted sum of ARE
+	 * 		d. Raise the error rate the the power specified by RT_BOOST_POWER to
+	 * 			compute the beta term.
+	 * 		e. Update the distribution by setting the multiplying the example's
+	 * 			weight by beta if its ARE is <= RT_MAX_ERROR and 1 otherwise.
+	 * 			Then set relative weights of examples so that they make a 
+	 * 			proper probability distribution (i.e. add to 1)
 	 */
+	
 	public void trainAdaBoostRT() {
-		// normalize data set if required
+		// Normalize the data with Transformer if that step is specified.
 		if (NORMALIZE_DATA) {
 			transformer = new TrainingSetTransformer(training_set);
 			transformer.transform(training_set);
 		}
 
-		int wl_collected = 0;
-		int wl_discarded = 0;
+		int wl_recruited = 0;	// Number of WL accepted into committee
+		int wl_discarded = 0;	// Number of WL rejected
 		initializeTrainingDistribution();
-		while (wl_collected < MAX_WL && wl_discarded < MAX_BAD_WL) {
+		
+		// Keep going as long as we do not have too many weak learners 
+		// recruited or too many weak learners rejected
+		while (wl_recruited < MAX_WL && wl_discarded < MAX_BAD_WL) {
 			WeakLearner wlt = new WeakLearner(training_set);
 			wlt.train();
 
@@ -75,7 +106,7 @@ public class AdaBoostRT {
 				}
 			}
 			if (0 == errRate) {
-				LogHelper.log("No Errors.  Quit");
+				System.out.println("No Errors.  Quit");
 				break;
 			}
 			double beta = Math.pow(errRate, RT_BOOST_POWER);
@@ -84,13 +115,11 @@ public class AdaBoostRT {
 			if (errRate < MAX_WL_ERR) {
 				wl_committee.add(wlt);
 				wlt.setCombCoef(Math.log(1.0/beta));
-				wl_collected++;
+				wl_recruited++;
 				wl_discarded = 0;
 			}
 			else {
 				wl_discarded++;
-				LogHelper.logln("discard " + wl_discarded + " failed weak learner with error rate " + errRate);
-				continue;
 			}
 
 			// set weight of samples for the next iteration
@@ -110,7 +139,17 @@ public class AdaBoostRT {
 			}
 
 			// print out iteration result
-			System.out.println("[" + wl_collected + "] WeakLearnerError=" + getError(wlt) + " ErrorRate=" + errRate + " FinalError=" + getError(training_set));
+			System.out.println("[" + wl_recruited + "] WeakLearnerError=" + getError(wlt) + " ErrorRate=" + errRate + " FinalError=" + getError());
+		}
+	}
+	
+	/** Initialize training set distribution */
+	private void initializeTrainingDistribution() {
+		// Initialize all weights and relative weights of examples to 1/N.
+		int size = training_set.size();
+		for (TrainingExample sample : training_set) {
+			sample.setWeight(1.0/size);
+			sample.setRelativeWeight(1.0/size);
 		}
 	}
 
@@ -127,10 +166,11 @@ public class AdaBoostRT {
 		return errors;
 	}
 
+
 	/* Prediction Phase:
 	 * ONLY CALL THIS FUNCTION AFTER TRAINING IS COMPLETE.
 	 * 
-	 * After the AdaBoostR model is trained, it should be able to utilize the
+	 * After the AdaBoostRT model is trained, it should be able to utilize the
 	 * collective knowledge of the weak learner committee to make predictions
 	 * about the target values of new input vectors.
 	 * 
@@ -153,12 +193,11 @@ public class AdaBoostRT {
 	}
 
 	/**
-	 * Return relative error of committee of weak learners
-	 * @return
+	 * Return relative error of committee of weak learners on training data
 	 */
-	public double getError(ArrayList<TrainingExample> testSet) {
+	public double getError() {
 		double error = 0.0;
-		for (TrainingExample sample : testSet) {
+		for (TrainingExample sample : training_set) {
 			double target = sample.getTarget();
 			double prediction = getPrediction(sample.getInputVector());
 			if (RELATIVE_ERR) {
@@ -167,20 +206,56 @@ public class AdaBoostRT {
 				error += Math.abs(prediction-target);
 			}
 		}
-		return error/testSet.size();
+		return error/training_set.size();
+	}
+	
+	/**
+	 * Return average absolute error of committee of weak learners on test data
+	 */
+	public double getAvAbsError(ArrayList<TrainingExample> examples) {
+		double error = 0.0;
+		for (TrainingExample example : examples) {
+			double target = example.getTarget();
+			double prediction = getPrediction(example.getInputVector());
+			error += Math.abs(prediction-target);
+		}
+		return error/examples.size();
+	}
+	
+	/**
+	 * Return average squared error of committee of weak learners on test data
+	 */
+	public double getAvSquaredError(ArrayList<TrainingExample> examples) {
+		double squared_error = 0.0;
+		for (TrainingExample example : examples) {
+			double target = example.getTarget();
+			double prediction = getPrediction(example.getInputVector());
+			squared_error += Math.pow(prediction - target, 2);
+		}
+		return squared_error/examples.size();
+	}
+	
+	/**
+	 * Return root mean squared error of committee of weak learners on test data
+	 */
+	public double getRMSError(ArrayList<TrainingExample> examples) {
+		double squared_error = 0.0;
+		for (TrainingExample example : examples) {
+			double target = example.getTarget();
+			double prediction = getPrediction(example.getInputVector());
+			squared_error += Math.pow(prediction - target, 2);
+		}
+		return Math.sqrt(squared_error/examples.size());
 	}
 
 	/**
 	 * Return relative error of a weak learner
-	 * 
-	 * @param wl the weak learner
-	 * @return
 	 */
 	public double getError(WeakLearner wl) {
 		double error = 0.0;
-		for (TrainingExample sample : training_set) {
-			double target = sample.getTarget();
-			double prediction = wl.getHypothesis(sample.getInputVector());
+		for (TrainingExample example : training_set) {
+			double target = example.getTarget();
+			double prediction = wl.getHypothesis(example.getInputVector());
 			if (RELATIVE_ERR) {
 				error += Math.abs((prediction-target)/target);
 			} else {
@@ -189,95 +264,62 @@ public class AdaBoostRT {
 		}
 		return error/training_set.size();
 	}
-
-	/** Initialize training set distribution */
-	private void initializeTrainingDistribution() {
-		// Initialize all weights and relative weights of examples to 1/N.
-		int size = training_set.size();
-		for (TrainingExample sample : training_set) {
-			sample.setWeight(1.0/size);
-			sample.setRelativeWeight(1.0/size);
-		}
-	}
-
+	
 	/**
-	 * write iteration results to a file
-	 * @param filename
+	 * Return the bet accuracy of the AdaBoostRT model as percentage
 	 */
-	public void writeBoostResults(String filename) {
-		FileWriter out = null;
-		try {
-			// sort samples according to target value
-			Collections.sort(training_set, new Comparator<TrainingExample>() {
-				public int compare(TrainingExample t1, TrainingExample t2) {
-					if (t1.getTarget() < t2.getTarget()) {
-						return -1;
-					} else if (t1.getTarget() > t2.getTarget()) {
-						return 1;
-					} else {
-						return 0;
-					}
-				}
-			});
-
-			// write output file
-			out = new FileWriter(filename, true);
-			for (TrainingExample sample : training_set) {
-				double target = sample.getTarget();
-				double[] input = sample.getInputVector();
-
-				// comma-delimited prediction errors for each iteration
-				StringBuffer buff = new StringBuffer();
-				buff.append(target).append(',');
-				double prediction = 0;
-				double sumOfWeights = 0;
-				for (WeakLearner wlt : wl_committee) {
-					prediction += (wlt.getCombCoef() * wlt.getHypothesis(input));
-					sumOfWeights += wlt.getCombCoef();
-					buff.append(prediction / sumOfWeights - target).append(',');
-				}
-				buff.append(prediction / sumOfWeights);
-				out.write(buff.toString());
-				out.append('\n');
-				out.flush();
+	public double getBetAccuracy() {
+		int num_correct = 0;
+		for (TrainingExample example : test_set) {
+			double target = example.getTarget();
+			double prediction = this.getPrediction(example.getInputVector());
+			double cutoff = example.getBetCutoff(BET_TYPE);
+			// If the target and prediction are on the same side of the cutoff,
+			// the bet prediction is correct.
+			if ((target <= cutoff && prediction <= cutoff) ||
+					(target >= cutoff && prediction >= cutoff)) {
+				num_correct++;
 			}
-		} catch (Exception e) {
-			LogHelper.logln("Failed to write iteration result " + e.getMessage());
-		} finally {
-			try {
-				out.close();
-			} catch (Exception ex) {}
 		}
+		return ((double) num_correct) / test_set.size();
 	}
+	
+
 
 	public static void main(String[] args) {
-		LogHelper.initialize("AdaBoost", false);
 
-		// config parser to parse new NBA stats
-		int[] features = new int[36];
-		for (int i = 0; i < 36; i++) {
-			features[i] = i;
-		}
-		DataParser.conigParser(",", 37, features);
-
-		// config WeakLearner to use specified number of features and quad terms
-		WeakLearner.configWeakLearner(8, true);
-
-		DataParser.processFile("C:/work/workspace/NBAStatFetch/data/SEASON-2007.csv");
+		// Get training set
+		DataParser.processFile("data/SEASON-2007.csv", false);
 		ArrayList<TrainingExample> training_set = DataParser.getData();
+		System.out.println("Training Set N = " + training_set.size());
+		System.out.println(training_set.get(100).getTarget());
 		AdaBoostRT ada = new AdaBoostRT(training_set);
-
-		// call AdaBoostL with linear error function
+		
+		// Train AdaBoostRT on training set.
 		ada.trainAdaBoostRT();
-
-		// write iteration results
-		ada.writeBoostResults("c:/temp/boost.csv");
-
-		// check new test samples
-		for (int i = 2008; i < 2012; i++) {
-			DataParser.processFile("C:/work/workspace/NBAStatFetch/data/SEASON-" + i + ".csv");
-			System.out.println("SEASON-" + i + " Error: " + ada.getError(DataParser.getData()));
-		}
-
+		System.out.println();
+		
+		// Test AdaBoostRT model on training set
+		System.out.println("Training Set N = " + ada.training_set.size());
+		System.out.println("Training Set Average Absolute Error = " + 
+				ada.getAvAbsError(ada.training_set));
+		System.out.println("Training Set Average Squared Error = " + 
+				ada.getAvSquaredError(ada.training_set));
+		System.out.println("Training Set RMS Error = " + 
+				ada.getRMSError(ada.training_set));
+		System.out.println();
+		
+		// Get test set and test AdaBoostRT model on test data
+		DataParser.clear();
+		DataParser.processFile("data/SEASON-2012-TEST.csv", true);
+		ada.test_set = DataParser.getData();
+		System.out.println("Test Set N = " + ada.test_set.size());
+		System.out.println("Test Set Average Absolute Error = " + 
+				ada.getAvAbsError(ada.test_set));
+		System.out.println("Test Set Average Squared Error = " + 
+				ada.getAvSquaredError(ada.test_set));
+		System.out.println("Test Set RMS Error = " + 
+				ada.getRMSError(ada.test_set));
+		System.out.println("Bet Accuracy: " + ada.getBetAccuracy());
 	}
 }
