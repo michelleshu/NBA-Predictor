@@ -164,7 +164,7 @@ public class NBAStatCalculator {
 			GameStatistics tenTotal = new GameStatistics();
 			GameStatistics tenOppTotal = new GameStatistics();
 			int gamesPlayed = 0;
-			for (int i = 0; i < homeGames.size(); i++) {
+			for (int i = 0; i < homeGames.size()-1; i++) {
 				Game g = homeGames.get(i);
 				seasonTotal.addStats(g, true);
 				seasonOppTotal.addStats(g, false);
@@ -176,12 +176,13 @@ public class NBAStatCalculator {
 					tenTotal.subtractStats(pg, true);
 					tenOppTotal.subtractStats(pg, false);
 				}
-				g.setSeasonHomeAvg(seasonTotal.calcAverage(gamesPlayed));
-				g.setSeasonHomeOppAvg(seasonOppTotal.calcAverage(gamesPlayed));
+				Game nextGame = homeGames.get(i+1);
+				nextGame.setSeasonHomeAvg(seasonTotal.calcAverage(gamesPlayed));
+				nextGame.setSeasonHomeOppAvg(seasonOppTotal.calcAverage(gamesPlayed));
 				if (gamesPlayed >= EARLY_SEASON) {
 					int tenPlayed = Math.min(gamesPlayed, 10);
-					g.setTenHomeAvg(tenTotal.calcAverage(tenPlayed));
-					g.setTenHomeOppAvg(tenOppTotal.calcAverage(tenPlayed));
+					nextGame.setTenHomeAvg(tenTotal.calcAverage(tenPlayed));
+					nextGame.setTenHomeOppAvg(tenOppTotal.calcAverage(tenPlayed));
 				}
 			}
 		}
@@ -192,7 +193,7 @@ public class NBAStatCalculator {
 			GameStatistics tenTotal = new GameStatistics();
 			GameStatistics tenOppTotal = new GameStatistics();
 			int gamesPlayed = 0;
-			for (int i = 0; i < roadGames.size(); i++) {
+			for (int i = 0; i < roadGames.size()-1; i++) {
 				Game g = roadGames.get(i);
 				seasonTotal.addStats(g, false);
 				seasonOppTotal.addStats(g, true);
@@ -204,12 +205,13 @@ public class NBAStatCalculator {
 					tenTotal.subtractStats(pg, false);
 					tenOppTotal.subtractStats(pg, true);
 				}
-				g.setSeasonRoadAvg(seasonTotal.calcAverage(gamesPlayed));
-				g.setSeasonRoadOppAvg(seasonOppTotal.calcAverage(gamesPlayed));
+				Game nextGame = roadGames.get(i+1);
+				nextGame.setSeasonRoadAvg(seasonTotal.calcAverage(gamesPlayed));
+				nextGame.setSeasonRoadOppAvg(seasonOppTotal.calcAverage(gamesPlayed));
 				if (gamesPlayed >= EARLY_SEASON) {
 					int tenPlayed = Math.min(gamesPlayed, 10);
-					g.setTenRoadAvg(tenTotal.calcAverage(tenPlayed));
-					g.setTenRoadOppAvg(tenOppTotal.calcAverage(tenPlayed));
+					nextGame.setTenRoadAvg(tenTotal.calcAverage(tenPlayed));
+					nextGame.setTenRoadOppAvg(tenOppTotal.calcAverage(tenPlayed));
 				}
 			}
 		}
