@@ -17,6 +17,9 @@ public class TrainingExample {
 	// i.e. (this weight) / (sum of all examples' weights)
 	private double relative_weight;
 	
+	/* If this is a test example, store betting cutoff data also. */
+	private double[] betting_cutoffs = new double[2];
+	
 	/* Constructors */
 	public TrainingExample(double[] i, double t, double w) {
 		this.input = i;
@@ -24,6 +27,15 @@ public class TrainingExample {
 		this.target = t;
 		this.weight = w;
 		this.relative_weight = 0;
+	}
+	
+	public TrainingExample(double[] i, double t, double[] b) {
+		this.input = i;
+		this.dim = i.length;
+		this.target = t;
+		this.weight = 0;
+		this.relative_weight = 0;
+		this.betting_cutoffs = b;
 	}
 	
 	public TrainingExample(double[] i, double t) {
@@ -66,6 +78,15 @@ public class TrainingExample {
 		return this.relative_weight;
 	}
 	
+	/** Get the betting cutoff, bet_type = 0 for cumulative, 1 for difference */
+	public double getBetCutoff(int bet_type) {
+		if (bet_type == 0) {
+			return this.betting_cutoffs[0];
+		} else {
+			return this.betting_cutoffs[1];
+		}
+	}
+	
 	/* Setters */
 	/** Set weight of this training example */
 	public void setWeight(double w) {
@@ -86,4 +107,5 @@ public class TrainingExample {
 	public void setRelativeWeight(double rw) {
 		this.relative_weight = rw;
 	}
+	
 }

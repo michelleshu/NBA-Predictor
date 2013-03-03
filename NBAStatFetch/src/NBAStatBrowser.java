@@ -17,8 +17,8 @@ public class NBAStatBrowser {
 	 * @throws FileNotFoundException 
 	 */
 	public static void main(String[] args) throws FileNotFoundException {
-		String season = "2012-13";  // specify a season to browse and save game stats
-		String outFile = "C:/work/workspace/NBAStatFetch/data/2012.csv";
+		String season = "2006-07";  // specify a season to browse and save game stats
+		String outFile = "data/2007.csv";
 
 		games = new HashMap<String, Game>();
 		NBAData teamData = getTeamBaseStats(season);

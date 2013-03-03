@@ -3,25 +3,32 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 /**
+ * TrainingSetTransformer.java
+ * 
+ * A utility tool that is used for normalization of training set data to fit
+ * within a certain range for ease of computation in AdaBoost type algorithms.
+ * 
  * Transform a set of training samples using linear transformation:
- *    x_i = offset_i + scale_i * v_i
+ * x_i = offset_i + scale_i * v_i
  * such that v_i is normalized in range [N1, N2]
  *
- * Transform the target using linear transformation:
- *    y = offset_t + scale_t * w
+ * Also, transform the target using linear transformation:
+ * y = offset_t + scale_t * w
  * such that w is normalized in range [N1, N2]
  * 
- * Provide utility to determine approximate linear correlations between v_i and w,
- * so the linear coefficients can be used as the initial values for gradient descent regression.
+ * Provide utility to determine approximate linear correlations between 
+ * v_i and w, so the linear coefficients can be used as the initial values 
+ * for gradient descent regression.
  * 
- * @author
+ * Last Updated February 23, 2013
  */
 public class TrainingSetTransformer {
-	public static final int N1 = 0;  // minimum value of input feature and target after transformation
-	public static final int N2 = 3;  // maximum value of input feature and target after transformation
+	public static final int N1 = 0;
+	public static final int N2 = 3;
 
-	double[] inputOffset;  // min value of input feature-i from all samples
-	double[] inputScale;   // (max - min) value of input feature-i from all samples
+	double[] inputOffset;  // min value of input feature - i from all samples
+	double[] inputScale;   // (max - min) value of input feature - i from all 
+						   // samples
 	double targetOffset;   // min target value from all samples
 	double targetScale;    // (max - min) target value from all samples
 
@@ -29,11 +36,14 @@ public class TrainingSetTransformer {
 		int inputCount = training_set.get(0).getInputVector().length;
 		inputOffset = new double[inputCount];
 		inputScale = new double[inputCount];
-		targetOffset = Double.MAX_VALUE;          // temporarily store the min target of all samples
-		targetScale = (-1.0) * Double.MAX_VALUE;  // temporarily store max target
+		
+		/* targetOffset will hold the minimum of offset values of all samples
+		 * and targetScale will hold the maximum scale value of all samples */
+		targetOffset = Double.MAX_VALUE;         
+		targetScale = (-1.0) * Double.MAX_VALUE;  
 		for (int i = 0; i < inputCount; i++) {
-			inputOffset[i] = Double.MAX_VALUE;          // temporarily store the min input value of all samples
-			inputScale[i] = (-1.0) * Double.MAX_VALUE;  // temporarily store max input value
+			inputOffset[i] = Double.MAX_VALUE;          
+			inputScale[i] = (-1.0) * Double.MAX_VALUE; 
 		}
 		for (TrainingExample s : training_set) {
 			double target = s.getTarget();
@@ -54,9 +64,11 @@ public class TrainingSetTransformer {
 			}
 		}
 
-		// set scale and offset values for the transformer
-		targetScale = (targetScale - targetOffset) / (N2-N1); 	// set scale = (max - min) / (N2 - N1)
-		targetOffset -= targetScale * N1; 						// set offset = (min - scale*N1)
+		/* Set the scale to (max - min) / (N2 - N1)
+		 * Set the offset to (min - scale * N1)
+		 */
+		targetScale = (targetScale - targetOffset) / (N2-N1); 
+		targetOffset -= targetScale * N1; 						
 		for (int i = 0; i < inputCount; i++) {
 			inputScale[i] = (inputScale[i] - inputOffset[i]) / (N2-N1);
 			inputOffset[i] -= inputScale[i] * N1;
@@ -67,7 +79,7 @@ public class TrainingSetTransformer {
 	 * Use this transformer to convert input and target values of all samples,
 	 * so they use the normalized values in the range [0, 1]
 	 * 
-	 * @param training_set the list of samples to be transformed
+	 * training_set is the list of samples to be transformed
 	 */
 	public void transform(ArrayList<TrainingExample> training_set) {
 		for (TrainingExample s : training_set) {
@@ -85,8 +97,6 @@ public class TrainingSetTransformer {
 	
 	/**
 	 * Convert a normalized target value to the real value 
-	 * @param normalizedTarget
-	 * @return
 	 */
 	public double toRealTarget(double normalizedTarget) {
 		return targetOffset + targetScale * normalizedTarget;
@@ -94,7 +104,6 @@ public class TrainingSetTransformer {
 	
 	/**
 	 * Helper object for estimated correlation of input feature and target value
-	 * @author
 	 */
 	public static class Correlation {
 		int index;
@@ -128,7 +137,7 @@ public class TrainingSetTransformer {
 	 */
 	public static Correlation[] estimateCorrelations(ArrayList<TrainingExample> training_set) {
 
-		// collect statistics for input-to-target coefficient
+		// Collect statistics for input-to-target coefficient
 		int featureCount = training_set.get(0).getInputVector().length;
 		double[] xmean = new double[featureCount];
 		double[] x2mean = new double[featureCount];
@@ -145,7 +154,7 @@ public class TrainingSetTransformer {
 			}
 		}
 
-		// calculate estimated coefficients
+		// Calculate estimated coefficients
 		Correlation[] estimated = new Correlation[featureCount];
 		for (int i = 0; i < featureCount; i++) {
 			double factor = 0;
@@ -156,7 +165,7 @@ public class TrainingSetTransformer {
 			estimated[i] = new Correlation(i, ymean - factor*xmean[i], factor);
 		}
 
-		// sort the array in ascending order of coefficient
+		// Sort the array in ascending order of coefficient
 		Arrays.sort(estimated, new Comparator<Correlation>() {
 			public int compare(Correlation c1, Correlation c2) {
 				if (c1.getFactor() < c2.getFactor()) {

@@ -16,23 +16,28 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 
 public class DataParser {
-	static String DELIMITER = ";";
-	static int TARGET_COL = 33;  // controls which column is the target
+	static String DELIMITER = ",";
+	static int TARGET_COL = 37;  // controls which column is the target
 	static int[] FEATURE_COL;
 	static {
-		FEATURE_COL = new int[31];
-		for (int i = 0; i < 31; i++) {
+		FEATURE_COL = new int[36];
+		for (int i = 0; i < 36; i++) {
 			FEATURE_COL[i] = i;
 		}
 	}
+	static int[] BET_COL = {41, 42};
+	public static ArrayList<TrainingExample> examplesIn = 
+			new ArrayList<TrainingExample>();
 
-	public static void conigParser(String delim, int target, int[] cols) {
+	public static void clear() {
+		examplesIn = new ArrayList<TrainingExample>();
+	}
+	
+	public static void configParser(String delim, int target, int[] cols) {
 		DELIMITER = delim;
 		TARGET_COL = target;
 		FEATURE_COL = cols;
 	}
-
-	public static ArrayList<TrainingExample> examplesIn;
 
 	/** Get all examples that have already been read. */
 	public static ArrayList<TrainingExample> getData() {
@@ -44,9 +49,17 @@ public class DataParser {
 		TrainingExample newExample = new TrainingExample(input, target);
 		examplesIn.add(newExample);
 	}
+	
+	private static void addExample(double[] input, double target, 
+			double[] betting_cutoffs) {
+		TrainingExample newExample = new TrainingExample(input, target, 
+				betting_cutoffs);
+		examplesIn.add(newExample);
+	}
 
-	/** Take one line from file, break it into components, pass to addExample */
-	private static void parseLine(String line) {
+	/** Take one line from file, break it into components, pass to addExample 
+	 *  Use this case for training example. */
+	private static void parseLineTrain(String line) {
 		String[] lineComponents = line.split(DELIMITER);
 
 		// input will store feature vector x
@@ -60,20 +73,52 @@ public class DataParser {
 
 		addExample(input, target);
 	}
+	
+	/** Take one line from file, break it into components, pass to addExample 
+	 *  Use this case for testing example. (include betting data) */
+	private static void parseLineTest(String line) {
+		String[] lineComponents = line.split(DELIMITER);
 
-	/** Read entire file, processing line by line */
-	public static void processFile(String filepath) {
-		examplesIn = new ArrayList<TrainingExample>();
+		// input will store feature vector x
+		double[] input = new double[FEATURE_COL.length];
+		// target will store the target value y
+		double target = Double.parseDouble(lineComponents[TARGET_COL]);
+
+		for (int i = 0; i < FEATURE_COL.length; i++) {
+			input[i] = Double.parseDouble(lineComponents[FEATURE_COL[i]]);
+		}
+		// betting cutoffs stores the cutoffs for cumulative and difference bets
+		// from OddShark.com
+		double[] betting_cutoffs = new double[BET_COL.length];
+		betting_cutoffs[0] = Double.parseDouble(lineComponents[BET_COL[0]]);
+		betting_cutoffs[1] = Double.parseDouble(lineComponents[BET_COL[1]]);
+
+		addExample(input, target, betting_cutoffs);
+	}
+
+	/** Read entire file, processing line by line 
+	 * Test is true if it is a test example, in which case we store betting
+	 * cutoff data. */
+	public static void processFile(String filepath, boolean test) {
 		try {	
 			// Open input streams
 			FileInputStream fstream = new FileInputStream(filepath);
 			DataInputStream in = new DataInputStream(fstream);
 			BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
-			// Pass line by line to parseLine
-			String line;
-			while ((line = reader.readLine()) != null) {
-				parseLine(line);
+			if (! test) {
+				// Pass line by line to parseLineTrain
+				String line;
+				while ((line = reader.readLine()) != null) {
+					parseLineTrain(line);
+				}
+			}
+			
+			if (test) {
+				String line;
+				while ((line = reader.readLine()) != null) {
+					parseLineTest(line);
+				}
 			}
 
 			// Close input streams
@@ -85,8 +130,11 @@ public class DataParser {
 			System.err.println("Error reading file.");
 		}
 	}
-
-	public static void main(String [] args) {
-		processFile("/Users/michelleshu/Documents/2013/CS74/Workspace/AdaBoost/src/data1.txt");
+	
+	public static void main(String[] args) {
+		processFile("data/SEASON-2012-TEST.csv", true);
+		ArrayList<TrainingExample> data = getData();
+		System.out.println(data.size());
+		System.out.println(data.get(87).getBetCutoff(0));
 	}
 }

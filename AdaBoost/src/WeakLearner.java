@@ -9,27 +9,19 @@
  * Last Updated February 14, 2013
  */
 
-import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Random;
 
 public class WeakLearner {
-	private static int SUBSET_SIZE = 8;         // Size of random subset of features
+	private final static int SUBSET_SIZE = 5;   // Size of random subset of features
 	private final static double LAMBDA = 0.0;	// Regularization term for LSR
-	private final static double ALPHA = 0.1;	// Initial Step size for LSR gradient descent
+	private final static double ALPHA = 0.1;	// Step size for LSR gradient descent
 	private final static double TAU = 0.01;		// Stopping criterion for gradient
 										        // descent convergence
 
-	private static boolean USE_QUAD_BASIS = true;  // include quadratic terms if it is true
+	private final static boolean USE_QUAD_BASIS = false;
 
-	public static void configWeakLearner(int subsetSize, boolean useQuad) {
-		SUBSET_SIZE = subsetSize;
-		USE_QUAD_BASIS = useQuad;
-	}
-
-	private double alpha;    // step size for gradient descent, it changes during iterations
+	private double alpha;
 	private ArrayList<TrainingExample> training_set;
 
 	/* Theta is the parameter vector used by this learner after training to 
@@ -67,10 +59,6 @@ public class WeakLearner {
 		selectSubset(training_set.get(0).getInputVector().length);
 	}
 
-	public ArrayList<TrainingExample> getTrainingSet() {
-		return training_set;
-	}
-
 	/**
 	 * Select feature indices for regression.
 	 * If USE_TOP_FEATURES=false, use random selection.
@@ -93,7 +81,8 @@ public class WeakLearner {
 			randomList.toArray(subset);
 		}
 
-		// Use the first training sample to count the basis vector, which should be the same length as theta
+		// Use the first training sample to count the basis vector, which should
+		// be the same length as theta
 		double[] features = selectFeatures(training_set.get(0).getInputVector());
 		Double[] basis = getBasisVector(features);
 
@@ -223,7 +212,6 @@ public class WeakLearner {
 		for (int i = 0; i < theta.length; i++) {
 			buff.append(theta[i] + " ");
 		}
-		LogHelper.logln("DEBUG", buff.toString());
 	}
 	
 	/**
@@ -299,6 +287,7 @@ public class WeakLearner {
 		int thetaNotChanged = 0;
 		int iter = 0;
 		while (thetaNotChanged < 10) {
+//		while (iter < 2000) {
 			iter++;
 			// calculate the error at the next theta
 			double newError = calcError(gradient);
@@ -312,7 +301,6 @@ public class WeakLearner {
 					thetaChange += delta*delta;
 					thetaSize += theta[i]*theta[i];
 				}
-				saveIteration();
 				thetaChange = Math.sqrt(thetaChange);
 				thetaSize = Math.sqrt(thetaSize);
 				if (thetaChange < TAU * thetaSize) {
@@ -325,197 +313,10 @@ public class WeakLearner {
 				gradient = calcGradient();
 				alpha *= 1.2;
 				printTheta();
-				LogHelper.logln("DEBUG", "Iteration=" + iter + " Alpha=" + alpha + " ThetaChange=" + thetaChange + " ThetaSize=" + thetaSize + " Error=" + error);
 			}
 			else {
 				alpha *= 0.5;
 			}
 		}
-	}
-
-	// helper for charting iteration results
-	ArrayList<double[]> thetaList = new ArrayList<double[]>();
-
-	// save theta of the current iteration, so it can be used for print out intermediate results
-	private void saveIteration() {
-		double[] newTheta = new double[theta.length];
-		for (int i = 0; i < theta.length; i++) {
-			newTheta[i] = theta[i];
-		}
-		thetaList.add(newTheta);
-	}
-
-	/**
-	 * write iteration results to a file
-	 * @param filename
-	 */
-	public void writeIterationResults(String filename, boolean append) {
-		FileWriter out = null;
-		try {
-			out = new FileWriter(filename, append);
-			int majorBasis = getMajorBasis();
-			if (majorBasis == 0)
-				return;
-			int[] featureIndices = getFeatureIndices(majorBasis);
-
-			// sort samples according to target value
-			Collections.sort(training_set, new Comparator<TrainingExample>() {
-				public int compare(TrainingExample t1, TrainingExample t2) {
-					if (t1.getTarget() < t2.getTarget()) {
-						return -1;
-					} else if (t1.getTarget() > t2.getTarget()) {
-						return 1;
-					} else {
-						return 0;
-					}
-				}
-			});
-
-			// write output file
-			for (TrainingExample sample : training_set) {
-				// calculate value of basis for the sample
-				double[] input = sample.getInputVector();
-				double[] features = selectFeatures(input);
-				Double[] basis = getBasisVector(features);
-				double majorValue = basis[majorBasis];
-				double target = sample.getTarget();
-
-				// comma-delimited prediction errors for each iteration
-				StringBuffer buff = new StringBuffer();
-				buff.append(featureIndices[0]).append(',');
-				buff.append(featureIndices[1]).append(',');
-				buff.append(majorValue).append(',');
-				buff.append(target).append(',');
-				double prediction = 0;
-				for (int j = 0; j < thetaList.size()-10; j++) {
-					double[] ths = thetaList.get(j);
-					prediction = 0;
-					for (int i = 0; i < ths.length; i++) {
-						prediction += ths[i] * basis[i];
-					}
-					buff.append(prediction - target).append(',');
-				}
-				buff.append(prediction);
-				out.write(buff.toString());
-				out.append('\n');
-				out.flush();
-			}
-		} catch (Exception e) {
-			LogHelper.logln("Failed to write iteration result " + e.getMessage());
-		} finally {
-			try {
-				out.close();
-			} catch (Exception ex) {}
-		}
-	}
-
-	// find the index of basis that contribute the most to the final result
-	private int getMajorBasis() {
-		// calculate values of individual basis features
-		double[] contributors = null;
-		for (TrainingExample sample : training_set) {
-			double[] features = selectFeatures(sample.getInputVector());
-			Double[] basis = getBasisVector(features);
-			if (null == contributors) {
-				contributors = new double[basis.length];
-			}
-			for (int i = 0; i < basis.length; i++) {
-				contributors[i] += basis[i] * theta[i];
-			}
-		}
-
-		// find the basis that contributed most to the target
-		double maxValue = 0;
-		int maxIndex = -1;
-		for (int i = 0; i < contributors.length; i++) {
-			if (contributors[i] > maxValue) {
-				maxValue = contributors[i];
-				maxIndex = i;
-			}
-		}
-		return maxIndex;
-	}
-
-	// convert a index of a theta basis into feature indices (2 indices only if quad terms are included)
-	private int[] getFeatureIndices(int basisIndex) {
-		int[] indices = new int[]{-1, -1};
-		if (basisIndex == 0) {
-			// this is the bias term
-			return indices;
-		}
-		else if (basisIndex < subset.length) {
-			// this is a linear term
-			indices[0] = subset[basisIndex-1];
-		}
-		else {
-			// this is a quad term
-			int idx = subset.length;
-			for (int i = 0; i < subset.length; i++) {
-				for (int j = i; j < subset.length; j++) {
-					idx++;
-					if (idx == basisIndex) {
-						indices[0] = subset[i];
-						indices[1] = subset[j];
-					}
-				}
-			}
-		}
-		return indices;
-	}
-
-	public static void main(String args[]) {
-		LogHelper.initialize("", true);
-
-		// config parser to parse all input columns in the new NBA stats
-		int[] features = new int[36];
-		for (int i = 0; i < 36; i++) {
-			features[i] = i;
-		}
-		DataParser.conigParser(",", 37, features);
-
-		// read sample data
-		DataParser.processFile("C:/work/workspace/NBAStatFetch/data/SEASON-2007.csv");
-		ArrayList<TrainingExample> training_set = DataParser.getData();
-
-		// config WeakLearner to use specified number of features and quad terms
-		configWeakLearner(9, true);
-
-		// setup initial weight
-		int sampleSize = training_set.size();
-		for (TrainingExample sample : training_set) {
-			sample.setRelativeWeight(1.0/sampleSize);
-		}
-
-/*		// setup transformer
-		TrainingSetTransformer transformer = new TrainingSetTransformer(training_set);
-		for (int i = 0; i < transformer.inputOffset.length; i++) {
-			LogHelper.logln("DEBUG", "Transformer [" + i + "] = " + transformer.inputOffset[i] + " + " + transformer.inputScale[i] + " v");
-		}
-		LogHelper.logln("DEBUG", "Transformer target = " + transformer.targetOffset + " + " + transformer.targetScale + " t");
-
-		// convert samples to use normalized feature values
-		transformer.transform(training_set);
-*/
-/*
-		// test target conversion
-		double normalized = training_set.get(0).getTarget();
-		System.out.println("Convert normalized target " + normalized + "->" + transformer.toRealTarget(normalized));
-
-		// test estimated normalized correlations
-		TrainingSetTransformer.Correlation[] corrArray = TrainingSetTransformer.estimateCorrelations(training_set);
-		for (TrainingSetTransformer.Correlation corr : corrArray) {
-			System.out.println("Correlation [" + corr.getIndex() + "] = " + corr.getOffset() + " + " + corr.getFactor() + " x");
-		}
-*/
-		WeakLearner wl = new WeakLearner(training_set);
-		wl.train();
-
-		// write iteration results for chart
-		wl.writeIterationResults("C:/temp/wldata.csv", false);
-
-		// test Hypothesis
-		double predicted = wl.getHypothesis(wl.training_set.get(1).getInputVector());
-		double actual = training_set.get(1).getTarget();
-		LogHelper.logln("Predicted=" + predicted + " Actual=" + actual);
 	}
 }

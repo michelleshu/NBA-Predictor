@@ -1,26 +1,30 @@
 import java.util.HashMap;
 
+/**
+ * GameStatistics.java
+ * A class to 
+ *
+ */
 
 public class GameStatistics {
-	int FGM;  // field goals made
-	int FGA;  // field goals attempted
-	int FG3M; // 3-point field goals made
-	int FG3A; // 3-point field goals attempted
-	int FTM;  // free throws made
-	int FTA;  // free throws attempted
-	int OREB; // offensive rebounds
-	int DREB; // defensive rebounds
-	int AST;  // assists
-	int STL;  // steals
-	int BLK;  // blocks
-	int TOV;  // turn-overs
-	int PF;   // personal fouls
-	int PTS;  // total score
-	String name; // team name
+	int FGM;  	// field goals made
+	int FGA;  	// field goals attempted
+	int FG3M; 	// 3-point field goals made
+	int FG3A; 	// 3-point field goals attempted
+	int FTM;  	// free throws made
+	int FTA;  	// free throws attempted
+	int OREB; 	// offensive rebounds
+	int DREB; 	// defensive rebounds
+	int AST;  	// assists
+	int STL;  	// steals
+	int BLK;  	// blocks
+	int TOV;  	// turn-overs
+	int PF;   	// personal fouls
+	int PTS;  	// total score
+	String name;// team name
 
-	/**
-	 * default constructor
-	 */
+	/** Constructors */
+	
 	public GameStatistics() {
 		FGM = 0;
 		FGA = 0;
@@ -56,6 +60,7 @@ public class GameStatistics {
 		PTS = Integer.parseInt(row[columns.get("PTS")]);
 	}
 
+	/** Add the statistics for an individual game to team history. */
 	public void addStats(Game game, boolean isHome) {
 		if (isHome) {
 			FGM += game.homeStats.FGM;
@@ -91,6 +96,7 @@ public class GameStatistics {
 		}
 	}
 
+	/** Subtract the stats from a particular game from team history */
 	public void subtractStats(Game game, boolean isHome) {
 		if (isHome) {
 			FGM -= game.homeStats.FGM;
@@ -126,6 +132,11 @@ public class GameStatistics {
 		}
 	}
 
+	/** 
+	 * Calculate the average game statistics of team at current time 
+	 * (To be used for computing statistics from prior games in season before
+	 * current game)
+	 */
 	public GameStatistics calcAverage(int gamesPlayed) {
 		GameStatistics stats = new GameStatistics();
 		stats.FGM = FGM / gamesPlayed;
@@ -167,20 +178,20 @@ public class GameStatistics {
 	}
 
 	/**
-	 * Return only major team stats for scor predictor
-	 * @return
+	 * Return a limited subset of statistics for the game predictors.
+	 * These are assumed to be 9 most crucial statistics.
 	 */
 	public String getMajorTeamStats() {
 		StringBuffer buff = new StringBuffer();
-		buff.append(FGM).append(",");          // field goals made
+		buff.append(FGM).append(",");          // Field goals made
 		buff.append(FG3M).append(",");         // 3-point field goals made
-		buff.append(FTM).append(",");          // tree throws made
-		buff.append(OREB + DREB).append(",");  // total rebounds
-		buff.append(AST).append(",");          // assists
-		buff.append(STL).append(",");          // steals
-		buff.append(BLK).append(",");          // blocks
-		buff.append(TOV).append(",");          // turn overs
-		buff.append(PTS);                      // game score
+		buff.append(FTM).append(",");          // Free throws made
+		buff.append(OREB + DREB).append(",");  // Total rebounds
+		buff.append(AST).append(",");          // Assists
+		buff.append(STL).append(",");          // Steals
+		buff.append(BLK).append(",");          // Blocks
+		buff.append(TOV).append(",");          // Turn overs
+		buff.append(PTS);                      // Game score
 		return buff.toString();
 	}
 

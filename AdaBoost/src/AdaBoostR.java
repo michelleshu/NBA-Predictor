@@ -27,7 +27,18 @@ public class AdaBoostR {
 	private ArrayList<TrainingExample> training_set;
 	private int N;	// Number of training examples
 	
+	/* The test_set contains all test examples */
+	public ArrayList<TrainingExample> test_set;
+	
+	/* If RELATIVE_ERR is true, measure error by relative value abs(error / target)
+	 * If RELATIVE_ERR is false, measure error by absolute value abs(error) */
+	private static final boolean RELATIVE_ERR = true;
+	
+	
 	private static final boolean NORMALIZE_DATA = true;
+	
+	/* 0 is difference, 1 is cumulative */
+	private static final int BET_TYPE = 1;
 	
 	/** Constructor */
 	public AdaBoostR(ArrayList<TrainingExample> train_set) {
@@ -350,6 +361,81 @@ public class AdaBoostR {
 			example.setRelativeWeight(example.getWeight() / sumOfWeights);
 		}
 	}
+	
+	/**
+	 * Return average absolute error of committee of weak learners on test data
+	 */
+	public double getAvAbsError(ArrayList<TrainingExample> examples) {
+		double error = 0.0;
+		for (TrainingExample example : examples) {
+			double target = example.getTarget();
+			double prediction = getPrediction(example.getInputVector());
+			error += Math.abs(prediction-target);
+		}
+		return error/examples.size();
+	}
+	
+	/**
+	 * Return average squared error of committee of weak learners on test data
+	 */
+	public double getAvSquaredError(ArrayList<TrainingExample> examples) {
+		double squared_error = 0.0;
+		for (TrainingExample example : examples) {
+			double target = example.getTarget();
+			double prediction = getPrediction(example.getInputVector());
+			squared_error += Math.pow(prediction - target, 2);
+		}
+		return squared_error/examples.size();
+	}
+	
+	/**
+	 * Return root mean squared error of committee of weak learners on test data
+	 */
+	public double getRMSError(ArrayList<TrainingExample> examples) {
+		double squared_error = 0.0;
+		for (TrainingExample example : examples) {
+			double target = example.getTarget();
+			double prediction = getPrediction(example.getInputVector());
+			squared_error += Math.pow(prediction - target, 2);
+		}
+		return Math.sqrt(squared_error/examples.size());
+	}
+
+	/**
+	 * Return relative error of a weak learner
+	 */
+	public double getError(WeakLearner wl) {
+		double error = 0.0;
+		for (TrainingExample example : training_set) {
+			double target = example.getTarget();
+			double prediction = wl.getHypothesis(example.getInputVector());
+			if (RELATIVE_ERR) {
+				error += Math.abs((prediction-target)/target);
+			} else {
+				error += Math.abs(prediction-target);
+			}
+		}
+		return error/training_set.size();
+	}
+	
+	/**
+	 * Return the bet accuracy of the AdaBoostR model as percentage
+	 */
+	public double getBetAccuracy() {
+		int num_correct = 0;
+		for (TrainingExample example : test_set) {
+			double target = example.getTarget();
+			double prediction = this.getPrediction(example.getInputVector());
+			double cutoff = example.getBetCutoff(BET_TYPE);
+			// If the target and prediction are on the same side of the cutoff,
+			// the bet prediction is correct.
+			if ((target <= cutoff && prediction <= cutoff) ||
+					(target >= cutoff && prediction >= cutoff)) {
+				num_correct++;
+			}
+		}
+		return ((double) num_correct) / test_set.size();
+	}
 
 	public static void main(String[] args) {
 		// Get training set
@@ -371,17 +457,5 @@ public class AdaBoostR {
 		System.out.println("Training Set RMS Error = " + 
 				ada.getRMSError(ada.training_set));
 		System.out.println();
-		
-		// Get test set and test AdaBoostR model on test data
-//		DataParser.clear();
-//		DataParser.processFile("data/SEASON-2012.csv", true);
-//		ada.test_set = DataParser.getData();
-//		System.out.println("Test Set N = " + ada.test_set.size());
-//		System.out.println("Test Set Average Absolute Error = " + 
-//				ada.getAvAbsError(ada.test_set));
-//		System.out.println("Test Set Average Squared Error = " + 
-//				ada.getAvSquaredError(ada.test_set));
-//		System.out.println("Test Set RMS Error = " + 
-//				ada.getRMSError(ada.test_set));
 	}
 }

@@ -2,7 +2,15 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 
+/**
+ * Game.java
+ * A class to represent data for a single game
+ */
+
 public class Game {
+	
+	/** Getters and setters */
+	
 	public void setSeasonHomeAvg(GameStatistics seasonHomeAvg) {
 		this.seasonHomeAvg = seasonHomeAvg;
 	}
@@ -50,13 +58,7 @@ public class Game {
 	GameStatistics tenRoadAvg;
 	GameStatistics tenRoadOppAvg;
 
-	/**
-	 * Constructor for NBA data parser
-	 * 
-	 * @param gameId
-	 * @param columns
-	 * @param row
-	 */
+	/** Constructor for NBADataParser */
 	public Game(String gameId, HashMap<String, Integer> columns, String[] row) {
 		this.gameId = gameId;
 
@@ -69,12 +71,7 @@ public class Game {
 		updateGame(columns, row);
 	}
 
-	/**
-	 * Updater for NBA data parser
-	 * 
-	 * @param columns
-	 * @param row
-	 */
+	/** Update game from NBADataParser */
 	public void updateGame(HashMap<String, Integer> columns, String[] row) {
 		String matchup = row[columns.get("MATCHUP")];
 		String[] tokens = matchup.split(" ");
@@ -89,20 +86,12 @@ public class Game {
 		}
 	}
 
-	/**
-	 * Constructor for NBA stat calculator
-	 * @param gameDate
-	 */
+	/** Constructor for NBAStatCalculator */
 	public Game(Date gameDate) {
 		this.gameDate = gameDate;
 	}
 
-	/**
-	 * Updater for NBA stat calculator
-	 * @param columns
-	 * @param row
-	 * @param isHome
-	 */
+	/** Update game from NBAStatCalculator */
 	public void updateGame(HashMap<String, Integer> columns, String[] row, boolean isHome) {
 		if (isHome) {
 			String name = row[columns.get("Team")];
