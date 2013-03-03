@@ -96,7 +96,7 @@ public class NBAStatCalculator {
 	/**
 	 * Write the season stats (averages of previous games in season) to file.
 	 */
-	static void writeGameStats(String statFile, boolean useLastTen) {
+	static void writeGameStats(String statFile) {
 		// Calculate statistics averages for each team's home and road games.
 		for (Team team : teams.values()) {
 			team.calcHomeStats();
@@ -220,8 +220,7 @@ public class NBAStatCalculator {
 		for (int season=2007; season < 2013; season++) {
 			readGameFile("data/" + season + ".csv");
 			if (getTeamCount() > 0) {
-				writeGameStats("data/SEASON-" + season + ".csv", true);
-				writeGameStats("C:/work/workspace/NBAStatFetch/data/TEN-" + season + ".csv", false);
+				writeGameStats("data/SEASON-" + season + ".csv");
 			}
 		}
 	}
